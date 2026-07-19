@@ -1,0 +1,7 @@
+{
+  "name": "transform-secret-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "vite": "^5.0.0"
+  }
+}

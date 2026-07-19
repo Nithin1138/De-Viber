@@ -114,7 +114,7 @@ const hardcodedSecrets: Rule = {
   severity: 'high',
   confidence: 'medium',
   platform: 'universal',
-  autoFixable: false,
+  autoFixable: true,
   requiresNetwork: false,
   detect: async function (context: RuleContext): Promise<Finding[]> {
     const findings: Finding[] = [];
@@ -164,7 +164,7 @@ const hardcodedSecrets: Rule = {
                 `Move this value to an environment variable (e.g., process.env.YOUR_KEY_NAME) ` +
                 `and add the .env file to your .gitignore. Then rotate (regenerate) the key ` +
                 `since the old one may already be compromised.`,
-              autoFixable: false,
+              autoFixable: true,
               evidence: line.trim().slice(0, 80) + (line.trim().length > 80 ? '...' : ''),
             });
           }
@@ -191,7 +191,7 @@ const hardcodedSecrets: Rule = {
               'This key should NEVER appear in client-side code. Move it to an environment ' +
               'variable and use it only in server-side code (API routes, edge functions). ' +
               'Then regenerate the key in your Supabase dashboard immediately.',
-            autoFixable: false,
+            autoFixable: true,
             evidence: line.trim().slice(0, 40) + '... [REDACTED]',
           });
         }
@@ -232,7 +232,7 @@ const hardcodedSecrets: Rule = {
               `move it to an environment variable and add .env to your .gitignore. ` +
               `Note: this detection is based on the variable name — if this is a ` +
               `false positive (e.g., a test fixture or placeholder), you can ignore it.`,
-            autoFixable: false,
+            autoFixable: true,
             evidence: `${varName} = "${value.slice(0, 20)}..."`,
           });
         }

@@ -37,6 +37,8 @@ import {
   renderMarkdown,
   renderJson,
 } from './report/generate.js';
+import { applyCodemods } from './transformer/codemodEngine.js';
+import { simpleGit } from 'simple-git';
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
@@ -426,6 +428,220 @@ async function verify(targetPath: string, options: {
   }
 }
 
+async function transform(targetPath: string, options: {
+  timeout: string;
+}): Promise<void> {
+  const projectRoot = resolve(targetPath);
+  if (!(await pathExists(projectRoot))) {
+    console.error(chalk.red(`\n✖ Cannot find project at: ${projectRoot}\n`));
+    process.exit(1);
+  }
+
+  // 1. Verify Git workspace is clean
+  const git = simpleGit(projectRoot);
+  try {
+    const isRepo = await git.checkIsRepo();
+    if (!isRepo) {
+      console.error(
+        chalk.red('\n✖ Project must be a Git repository to run transform.\n')
+      );
+      process.exit(1);
+    }
+  } catch (err: any) {
+    console.error(chalk.red(`\n✖ Git verification failed: ${err.message}\n`));
+    process.exit(1);
+  }
+
+  const status = await git.status();
+  const hasTrackedChanges =
+    status.staged.length > 0 ||
+    status.modified.length > 0 ||
+    status.deleted.length > 0 ||
+    status.renamed.length > 0;
+
+  if (hasTrackedChanges) {
+    console.error(
+      chalk.red(
+        '\n✖ Git working directory has uncommitted changes.\n' +
+        '  Please commit or stash your changes before running transform.\n'
+      )
+    );
+    process.exit(1);
+  }
+
+  const currentBranchResult = await git.branch();
+  const currentBranch = currentBranchResult.current;
+  if (!currentBranch) {
+    console.error(chalk.red('\n✖ Could not identify the current Git branch.\n'));
+    process.exit(1);
+  }
+
+  const timestamp = Date.now();
+  const backupBranch = `deviber-backup-${timestamp}`;
+
+  console.log(chalk.cyan(`\n📦 Creating backup branch: ${backupBranch}...`));
+  try {
+    await git.checkoutLocalBranch(backupBranch);
+    // Switch back to the active branch to perform transforms
+    await git.checkout(currentBranch);
+  } catch (err: any) {
+    console.error(chalk.red(`\n✖ Failed to create backup branch: ${err.message}\n`));
+    process.exit(1);
+  }
+
+  // 2. Discover files
+  let files: string[];
+  try {
+    files = await fg('**/*', {
+      cwd: projectRoot,
+      ignore: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/dist/**',
+        '**/build/**',
+        '**/.next/**',
+        '**/coverage/**',
+        '**/*.min.js',
+        '**/*.min.css',
+        '**/*.map',
+        '**/*.lock',
+        '**/package-lock.json',
+      ],
+      dot: true,
+      onlyFiles: true,
+    });
+  } catch (err: any) {
+    console.error(chalk.red(`\n✖ Failed to scan project files: ${err.message}\n`));
+    process.exit(1);
+  }
+
+  const packageJson = await loadPackageJson(projectRoot);
+
+  // 3. Detect platform and run scan rules
+  const platformDetection = await detectPlatform(projectRoot, files);
+  const context: RuleContext = {
+    projectRoot,
+    files,
+    readFile: (relativePath: string) => safeReadFile(join(projectRoot, relativePath)),
+    packageJson,
+    offline: true, // run transform completely offline
+    detectedPlatform: platformDetection,
+  };
+
+  const allRules = [
+    ...lovableRules,
+    ...securityRules,
+    ...dependencyRules,
+  ];
+
+  console.log(chalk.cyan('🔍 Scanning for auto-fixable findings...'));
+  const { findings } = await runRules(allRules, context);
+
+  const fixableFindings = findings.filter(f => f.autoFixable);
+  if (fixableFindings.length === 0) {
+    console.log(chalk.green('\n✅ No auto-fixable findings found. Nothing to transform!'));
+    return;
+  }
+
+  console.log(chalk.cyan(`\n⚡ Applying codemods for ${fixableFindings.length} auto-fixable findings...`));
+  let summaries;
+  try {
+    summaries = await applyCodemods(fixableFindings, projectRoot, packageJson);
+  } catch (err: any) {
+    console.error(chalk.red(`\n✖ Failed to apply codemods: ${err.message}\n`));
+    // Rollback changes
+    console.log(chalk.yellow('🔄 Rolling back to backup branch...'));
+    await git.reset(['--hard', backupBranch]);
+    process.exit(1);
+  }
+
+  if (summaries.length === 0) {
+    console.log(chalk.green('\n✅ No changes were made by codemods.'));
+    return;
+  }
+
+  // 4. Verify post-transform version
+  console.log(chalk.cyan('\n🐳 Running Docker verification to confirm safety...'));
+  const verifier = new DockerVerifier();
+  try {
+    await verifier.checkDockerStatus();
+  } catch (error: any) {
+    console.error(chalk.red(`\n✖ Docker check failed:\n${error.message}\n`));
+    console.log(chalk.yellow('🔄 Rolling back to backup branch...'));
+    await git.reset(['--hard', backupBranch]);
+    process.exit(1);
+  }
+
+  const timeoutSeconds = parseInt(options.timeout, 10) || 90;
+  const projectName = (packageJson?.name as string) ?? basename(projectRoot);
+
+  let currentResult;
+  try {
+    currentResult = await verifier.verifyPath(projectRoot, projectName, 'current', timeoutSeconds);
+  } catch (err: any) {
+    console.error(chalk.red(`\n✖ Verification failed with unexpected error: ${err.message}`));
+    console.log(chalk.yellow('🔄 Rolling back to backup branch...'));
+    await git.reset(['--hard', backupBranch]);
+    process.exit(1);
+  }
+
+  if (!currentResult.built || (currentResult.testPassed === false)) {
+    console.error(chalk.red('\n✖ Post-transform version failed verification!'));
+    if (!currentResult.built) {
+      console.error(chalk.red(`  Reason: Build failed: ${currentResult.buildError}`));
+    } else {
+      console.error(chalk.red(`  Reason: Tests failed (${currentResult.testFailedCount} failures)`));
+    }
+    console.log(chalk.yellow('\n🔄 Rolling back changes to original state...'));
+    await git.reset(['--hard', backupBranch]);
+    process.exit(1);
+  }
+
+  // Check route failures as well (if any failed)
+  const failedRoute = currentResult.routesChecked.find(r => !r.success);
+  if (failedRoute) {
+    console.error(chalk.red(`\n✖ Post-transform version failed verification!`));
+    console.error(chalk.red(`  Reason: Route ping failed for "${failedRoute.route}": ${failedRoute.error}`));
+    console.log(chalk.yellow('\n🔄 Rolling back changes to original state...'));
+    await git.reset(['--hard', backupBranch]);
+    process.exit(1);
+  }
+
+  // 5. Produce a plain language diff summary
+  console.log(chalk.dim('═'.repeat(60)));
+  console.log(chalk.green('✨ TRANSFORM SUCCESS: All changes successfully verified!'));
+  console.log(chalk.dim('─'.repeat(60)));
+  console.log('Plain-Language Summary of Changes:');
+  const groupedByFile = new Map<string, typeof summaries>();
+  for (const s of summaries) {
+    if (!groupedByFile.has(s.file)) {
+      groupedByFile.set(s.file, []);
+    }
+    groupedByFile.get(s.file)!.push(s);
+  }
+
+  for (const [file, items] of groupedByFile.entries()) {
+    const relativeFile = file.startsWith(projectRoot)
+      ? file.slice(projectRoot.length + 1)
+      : file;
+    console.log(`\n📄 ${chalk.bold(relativeFile)}:`);
+    for (const item of items) {
+      if (item.action === 'extracted') {
+        console.log(
+          `  • Extracted hardcoded secret variable "${chalk.yellow(item.variableName)}" into ` +
+          `environment variable "${chalk.green(item.envVarName)}".`
+        );
+      }
+    }
+  }
+
+  console.log(`\n🔒 Secrets have been safely appended to:`);
+  console.log(`  • ${chalk.bold('.env.local')} (local secrets, git-ignored)`);
+  console.log(`  • ${chalk.bold('.env.example')} (placeholder template)`);
+  console.log(chalk.dim('─'.repeat(60)));
+  console.log(chalk.cyan(`\nOriginal code is saved on backup branch: ${backupBranch}\n`));
+}
+
 // ─── CLI Setup ──────────────────────────────────────────────────────────────
 
 const program = new Command();
@@ -499,6 +715,25 @@ program
       const message = error instanceof Error ? error.message : String(error);
       console.error(
         chalk.red(`\n✖ Unexpected error during verification: ${message}\n`)
+      );
+      process.exit(1);
+    }
+  });
+
+program
+  .command('transform')
+  .description('Extract auto-fixable findings into clean configurations and verify safety')
+  .argument('[path]', 'Path to the project directory', '.')
+  .option('--timeout <seconds>', 'Timeout in seconds for Docker verification stage', '90')
+  .action(async (targetPath: string, opts: Record<string, unknown>) => {
+    try {
+      await transform(targetPath || '.', {
+        timeout: opts.timeout as string,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        chalk.red(`\n✖ Unexpected error during transformation: ${message}\n`)
       );
       process.exit(1);
     }

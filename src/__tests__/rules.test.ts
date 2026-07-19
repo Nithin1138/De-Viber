@@ -159,6 +159,30 @@ describe('Lovable Rules', () => {
       expect(commentFindings).toHaveLength(0);
     });
   });
+
+  describe('LOVABLE_CLOUD_DATA_RISK_001 — Lovable Cloud Data Risk', () => {
+    it('fires on lovable-cloud-detected (has supabase.lovable.app url)', async () => {
+      const context = await buildContext('lovable-cloud-detected');
+      const { findings } = await runRules(lovableRules, context);
+
+      const cloudFindings = findings.filter(
+        (f) => f.ruleId === 'LOVABLE_CLOUD_DATA_RISK_001'
+      );
+      expect(cloudFindings.length).toBe(1);
+      expect(cloudFindings[0].severity).toBe('high');
+      expect(cloudFindings[0].message).toContain('connecting to Lovable Cloud');
+    });
+
+    it('does NOT fire on lovable-cloud-self-supabase (has standard supabase.co url)', async () => {
+      const context = await buildContext('lovable-cloud-self-supabase');
+      const { findings } = await runRules(lovableRules, context);
+
+      const cloudFindings = findings.filter(
+        (f) => f.ruleId === 'LOVABLE_CLOUD_DATA_RISK_001'
+      );
+      expect(cloudFindings).toHaveLength(0);
+    });
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

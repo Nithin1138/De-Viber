@@ -230,9 +230,74 @@ const lovableComments: Rule = {
   },
 };
 
+/**
+ * LOVABLE_CLOUD_DATA_RISK_001
+ *
+ * Detects whether the project connects to Lovable Cloud Supabase hosting.
+ */
+const lovableCloudDataRisk: Rule = {
+  id: 'LOVABLE_CLOUD_DATA_RISK_001',
+  name: 'Lovable Cloud Managed Database Risk',
+  category: 'portability',
+  severity: 'high',
+  confidence: 'high',
+  platform: 'lovable',
+  autoFixable: false,
+  requiresNetwork: false,
+  detect: async function (context: RuleContext): Promise<Finding[]> {
+    const findings: Finding[] = [];
+    const targetFiles = context.files.filter(
+      (f) =>
+        f.endsWith('.ts') ||
+        f.endsWith('.tsx') ||
+        f.endsWith('.js') ||
+        f.endsWith('.jsx') ||
+        f.endsWith('.json') ||
+        f.endsWith('.env') ||
+        f.endsWith('.env.local')
+    );
+
+    const cloudDomainPattern = /supabase\.lovable\.(?:app|co|dev)/gi;
+
+    for (const file of targetFiles) {
+      const content = await context.readFile(file);
+      if (!content) continue;
+
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        cloudDomainPattern.lastIndex = 0;
+        const match = cloudDomainPattern.exec(lines[i]);
+        if (match) {
+          findings.push({
+            id: nextFindingId('LOVABLE_CLOUD_DATA_RISK_001'),
+            ruleId: 'LOVABLE_CLOUD_DATA_RISK_001',
+            ruleName: 'Lovable Cloud Managed Database Risk',
+            category: 'portability',
+            severity: 'high',
+            confidence: 'high',
+            file: join(context.projectRoot, file),
+            line: i + 1,
+            message: 'Project is connecting to Lovable Cloud Supabase hosting',
+            userActionableMessage:
+              'Your project connects to a Lovable Cloud managed Supabase database. ' +
+              'Note that exporting your code does NOT automatically copy or export your actual database records, user auth accounts, or storage files. ' +
+              'If you delete or disconnect the Lovable project, your database records will be permanently deleted and cannot be undone. ' +
+              'You MUST manually export your data tables (as CSV/SQL), storage assets, and auth records from Lovable/Supabase before shutting it down.',
+            autoFixable: false,
+            evidence: lines[i].trim(),
+          });
+        }
+      }
+    }
+
+    return findings;
+  },
+};
+
 /** All Lovable platform-specific rules. */
 export const lovableRules: Rule[] = [
   lovableScopedDeps,
   lovableConfig,
   lovableComments,
+  lovableCloudDataRisk,
 ];

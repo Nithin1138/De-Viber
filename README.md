@@ -58,6 +58,10 @@ deviber verify <path>
 deviber verify <path> --baseline <ref>     # Compare against a Git commit/branch
 deviber verify <path> --timeout 120        # Custom timeout per stage in seconds
 deviber verify <path> --cleanup            # Clean up leftover test containers/images
+
+# Automatically refactor auto-fixable findings and verify safety
+deviber transform <path>
+deviber transform <path> --timeout 120     # Custom verification timeout in seconds
 ```
 
 ## How to Read the Report
@@ -106,9 +110,10 @@ This tool is honest about what it can and can't do:
 git clone https://github.com/your-org/deviber-cli.git
 cd deviber-cli
 npm install
-npm run build    # Compile TypeScript
-npm test         # Run test suite (48 tests)
-npm run dev      # Watch mode
+npm run build            # Compile TypeScript
+npm test                 # Run fast unit test suite (50 tests)
+npm run test:integration # Run slow Docker integration tests (5 tests)
+npm run dev              # Watch mode
 ```
 
 ## Disclaimer
