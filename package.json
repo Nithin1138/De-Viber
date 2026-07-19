@@ -1,0 +1,55 @@
+{
+  "name": "deviber-cli",
+  "version": "0.1.0",
+  "description": "A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit) for vendor lock-in and security issues.",
+  "type": "module",
+  "bin": {
+    "deviber": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "lovable",
+    "bolt",
+    "replit",
+    "portability",
+    "security",
+    "cli",
+    "ai-code-audit",
+    "lock-in"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dockerode": "^5.0.1",
+    "fast-glob": "^3.3.2",
+    "simple-git": "^3.36.0",
+    "tar": "^7.5.20",
+    "ts-morph": "^24.0.0"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^4.0.1",
+    "@types/node": "^20.14.0",
+    "@types/tar": "^6.1.13",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
