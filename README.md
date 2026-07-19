@@ -18,20 +18,37 @@ A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit) for 
 
 ## Quick Start & Installation
 
-You can run `deviber-cli` instantly without global installation:
+You can build and run `deviber-cli` locally on your machine. *(Note: Publication to the public npm registry is pending. Once published, running `npx deviber-cli analyse ...` directly will be supported).*
+
+### Run locally (Clone & Build)
+
+To run the CLI from source:
 
 ```bash
-# Scan your exported project directory
-npx deviber-cli analyse ./path-to-your-project
+# 1. Clone the repository
+git clone https://github.com/Nithin1138/De-Viber.git
+cd De-Viber
+
+# 2. Install dependencies & build
+npm install
+npm run build
+
+# 3. Scan your project folder using the local build
+node dist/index.js analyse ./path-to-your-project
 ```
 
-Or install it globally to make the command permanently available:
+### Install locally as a global tool
+
+If you want to pack the project into a tarball and install it globally as the `deviber` command:
 
 ```bash
-# Install globally
-npm install -g deviber-cli
+# 1. Pack the package into a tarball (.tgz)
+npm pack
 
-# Run scans using the global binary
+# 2. Install the packed tarball globally
+npm install -g ./deviber-cli-0.1.0.tgz
+
+# 3. Run scans anywhere using the 'deviber' command
 deviber analyse ./path-to-your-project
 ```
 

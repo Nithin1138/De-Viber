@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-20
+
+### Added
+- **Docker Verification Sandbox (Priority 2)**:
+  - Added `verify` command to run isolated project builds and test runs inside Node.js Docker containers.
+  - Automatically detects package managers via lockfile fingerprints (`pnpm-lock.yaml`, `yarn.lock`, etc.).
+  - Extracts and pings exposed routes (`3000`/`5173`) at runtime to verify web server safety.
+  - Automatically prunes leftover containers and images, with a `--cleanup` command to prune orphaned resources.
+- **AST Refactoring Engine (Priority 3)**:
+  - Added `transform` command utilizing `ts-morph` AST parser to extract hardcoded secrets into `.env.local` and add placeholders to `.env.example`.
+  - Automatically detects and configures Vite-scoped environment variables (`import.meta.env.VITE_*`) or Webpack/Node variables (`process.env.*`).
+  - Added automated git-based backup and rollback engine to revert changes via `git reset --hard` if post-transformation Docker verification fails.
+- **Lovable Cloud Database Risk Rule**:
+  - `LOVABLE_CLOUD_DATA_RISK_001` — Detects Supabase urls pointing to Lovable-managed cloud instances and warns that database records, auth accounts, and files must be manually migrated before deleting the Lovable project.
+- **Repeatable Packaging Validation (Priority 4)**:
+  - Added packaging test script (`scripts/test-packaging.sh`) and integrated `npm run test:packaging` to dynamically test NPM packaging correctness in an isolated shell.
+- **Security Responsible Disclosure Policy**:
+  - Added `SECURITY.md` detailing responsible disclosure protocols and limitations of scan heuristics.
+
+### Fixed
+- **Peer Dependency resolution in Docker**: Added `--legacy-peer-deps` to npm install phase in Docker verifier to prevent ERESOLVE compilation crashes on React 19 apps with React 18 peer requirements. Tested and confirmed on real-world project `brand-bloom-qr`.
+- **Unit Test isolation**: Fixed config restoration and env cleanup during Vitest runs to prevent dirty directory issues.
+- **Transitive Security Vulnerabilities**: Upgraded development dependency Vitest/Vite to `v4.1.10` via force audit fix, resolving all 5 vulnerabilities (moderate/high/critical) in esbuild/vite dev chain.
+
+### Tracked Issues / Pending Items
+- **Real-world validation gap (Priority 4)**: Real-world validation has been confirmed on 1 real-world project (`brand-bloom-qr`), but scanning and calibrating against 2-3 additional real-world exports remains blocked until these exports are provided by the user.
+
 ## [0.1.0] - 2024-01-XX
 
 ### Added
