@@ -464,7 +464,7 @@ export class DockerVerifier {
   }
 
   private generateDockerfile(): string {
-    return `FROM node:20-alpine
+    return `FROM node:22-alpine
 WORKDIR /app
 COPY package.json package-lock.js* yarn.lo* pnpm-lock.ya* ./
 
