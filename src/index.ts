@@ -363,7 +363,7 @@ async function verify(targetPath: string, options: {
     process.exit(1);
   }
 
-  const timeoutSeconds = parseInt(options.timeout, 10) || 90;
+  const timeoutSeconds = parseInt(options.timeout, 10) || 180;
   const packageJson = await loadPackageJson(projectRoot);
   const projectName = (packageJson?.name as string) ?? basename(projectRoot);
 
@@ -572,7 +572,7 @@ async function transform(targetPath: string, options: {
     process.exit(1);
   }
 
-  const timeoutSeconds = parseInt(options.timeout, 10) || 90;
+  const timeoutSeconds = parseInt(options.timeout, 10) || 180;
   const projectName = (packageJson?.name as string) ?? basename(projectRoot);
 
   let currentResult;
@@ -702,7 +702,7 @@ program
   .description('Verify a project builds and tests in Docker, comparing against git baseline')
   .argument('[path]', 'Path to the project directory', '.')
   .option('--baseline <ref>', 'Git ref to compare against (e.g. HEAD, main)')
-  .option('--timeout <seconds>', 'Timeout in seconds per verify stage', '90')
+  .option('--timeout <seconds>', 'Timeout in seconds per verify stage', '180')
   .option('--cleanup', 'Stop and clean up orphaned deviber-verify containers/images')
   .action(async (targetPath: string, opts: Record<string, unknown>) => {
     try {
@@ -724,7 +724,7 @@ program
   .command('transform')
   .description('Extract auto-fixable findings into clean configurations and verify safety')
   .argument('[path]', 'Path to the project directory', '.')
-  .option('--timeout <seconds>', 'Timeout in seconds for Docker verification stage', '90')
+  .option('--timeout <seconds>', 'Timeout in seconds for Docker verification stage', '180')
   .action(async (targetPath: string, opts: Record<string, unknown>) => {
     try {
       await transform(targetPath || '.', {
