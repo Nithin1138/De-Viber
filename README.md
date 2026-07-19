@@ -2,127 +2,132 @@
 
 A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit) for **vendor lock-in** and **security issues**.
 
-Built for non-technical founders and small dev agencies who exported a project from an AI app-builder and need to know:
-- **How locked-in is it?** — Which parts of your code only work inside the platform?
-- **Is it secure enough for real users?** — Are there exposed secrets, missing database security, or other vulnerabilities?
+> [!WARNING]
+> **Disclaimer & Important Notice**
+> This tool is provided **"as-is" with no warranty**. It uses heuristics and pattern matching that may produce false positives or miss real issues. **This is not a substitute for a professional security audit.** Always verify findings manually before making changes or deploying to production.
 
 ---
 
-## 🔒 Trust & Safety
+## 🔒 Trust & Safety: What This Tool Does NOT Do
 
-**This tool never contacts Lovable, Bolt, Replit, or any AI platform's servers.**
-
-It operates entirely on code you've already exported through the platform's own download/export feature. The only optional network call goes to the public npm registry to check for hallucinated (non-existent) packages — and you can skip even that with `--offline`.
-
-Every finding includes a plain-language explanation of what it means and what to do about it. Heuristic-based detections are clearly labeled as such.
+* **NO Remote API Calls**: This tool operates *exclusively* offline on code you have already exported. It **never** contacts Lovable, Bolt, Replit, or any AI platform's servers.
+* **NO Automated Data Migration**: We scan and refactor code, not databases. Moving away from Lovable Cloud or managed environments will delete your live records—you must export your tables, storage, and user auth accounts separately.
+* **NO Guarantees**: Detections are based on patterns and heuristics. They help pinpoint portability hurdles and security gaps but cannot prove a codebase is 100% bug-free.
 
 ---
 
-## Quick Start
+## Quick Start & Installation
+
+You can run `deviber-cli` instantly without global installation:
 
 ```bash
-# Scan your exported project (no installation needed)
+# Scan your exported project directory
 npx deviber-cli analyse ./path-to-your-project
+```
 
-# Or install globally
+Or install it globally to make the command permanently available:
+
+```bash
+# Install globally
 npm install -g deviber-cli
+
+# Run scans using the global binary
 deviber analyse ./path-to-your-project
 ```
 
-## What It Checks
+---
 
-### Portability (Lock-In Risk)
-- **Platform-scoped dependencies** — Packages like `@lovable.dev/*` that won't work outside the platform
-- **Platform-specific config files** — Configuration that standard hosting platforms won't recognize
-- **AI code markers** — Comments left by the platform's code generator
-
-### Security (Production Readiness)
-- **Hardcoded secrets** — API keys, tokens, and passwords committed directly in code instead of environment variables
-- **Missing Row Level Security (RLS)** — Supabase database tables without access controls (anyone with your public key can read all data)
-- **Client-side-only role checks** — Admin/role checks that exist only in the browser and can be trivially bypassed
-- **Hallucinated dependencies** — npm packages referenced in your project that don't actually exist (a known AI code generation failure mode)
-- **Ownership-blind queries** — Database queries that don't verify the requesting user owns the data they're accessing
-
-## CLI Options
+## CLI Commands & Options
 
 ```bash
 # Scan a project for vendor lock-in and security issues
 deviber analyse <path>
-deviber analyse <path> --offline    # Skip npm registry checks
-deviber analyse <path> --platform lovable  # Override platform detection
-deviber analyse <path> --format json       # JSON report format
-deviber analyse <path> --output report.md  # Save report to file
+deviber analyse <path> --offline         # Skip npm registry checks
+deviber analyse <path> --platform lovable # Force platform ruleset
+deviber analyse <path> --format json      # Output as structured JSON
+deviber analyse <path> --output report.md # Save results to a file
 
-# Verify a project compiles, runs tests, or pings routes in Docker
+# Verify a project builds, runs tests, or pings routes in Docker
 deviber verify <path>
-deviber verify <path> --baseline <ref>     # Compare against a Git commit/branch
-deviber verify <path> --timeout 120        # Custom timeout per stage in seconds
-deviber verify <path> --cleanup            # Clean up leftover test containers/images
+deviber verify <path> --baseline <ref>    # Compare against a baseline Git commit
+deviber verify <path> --timeout 120       # Custom verification timeout in seconds
+deviber verify <path> --cleanup           # Clean up leftover test containers
 
 # Automatically refactor auto-fixable findings and verify safety
 deviber transform <path>
-deviber transform <path> --timeout 120     # Custom verification timeout in seconds
+deviber transform <path> --timeout 120    # Custom verification timeout in seconds
 ```
 
-## How to Read the Report
+---
 
-The report produces two independent scores:
+## What It Checks
 
-| Score | What it measures | What "low" means |
-|---|---|---|
-| **Portability Score** (0-100) | How locked-in your project is to the original platform | Many platform-specific dependencies that need replacing before you can deploy elsewhere |
-| **Security Score** (0-100) | How safe your project is to put in front of real users | Critical vulnerabilities that must be fixed before production |
+### Portability (Lock-In Risk)
+* **Platform-Scoped Dependencies**: Scans for packages like `@lovable.dev/*` which only resolve inside the builder's hosting layer.
+* **Platform-Specific Configurations**: Checks for config files (e.g. `.lovable/` folder configuration) that standard hosts (Vercel, Railway) do not understand.
+* **AI Generator Comment Markers**: Finds comments left by AI generators that indicate where custom manual overrides might be needed.
+* **Lovable Cloud Data Risk**: Flags connection URLs pointing to managed Lovable database endpoints (`supabase.lovable.app`) to warn about data records loss on platform deletion.
 
-Each finding includes:
-- **Severity** — 🔴 Critical, 🟠 High, 🟡 Medium, 🔵 Low, ℹ️ Info
-- **Confidence** — Whether the detection is reliable or heuristic-based
-- **What to do** — Plain-language instructions a non-developer can understand
+### Security (Production Readiness)
+* **Hardcoded Secrets**: AWS access keys, Stripe secret/publishable keys, and Supabase service-role keys committed in source.
+* **Missing Row Level Security (RLS)**: Scans migration scripts for tables missing RLS enforcements.
+* **Client-Side Admin Bypass**: Flags admin checks implemented solely in frontend components without server-side validation.
+* **Hallucinated Dependencies**: Compares package list against the public npm registry to detect packages generated by AI hallucinations.
+* **Ownership-Blind Queries**: Highlights queries fetching or updating records without verifying requesting user ownership.
 
-### Understanding Confidence Levels
+---
 
-Not all findings are created equal:
+## Example Report Output
 
-- **High confidence** — The tool is very confident this is a real issue (e.g., a known API key pattern, or a table with no RLS enabled).
-- **Medium confidence** — Likely a real issue, but has some false-positive risk. Worth checking.
-- **Low confidence** — This is a *review hint*, not a certainty. The tool flagged it because the pattern looks suspicious, but manual review is needed to confirm.
+Here is a redacted example of what a printed Markdown report looks like:
 
-## Currently Supported Platforms
+```markdown
+# 📋 Portability & Security Report
 
-| Platform | Status |
+**Project:** simple-app
+**Files Scanned:** 12
+**Detected Platform:** lovable (high confidence)
+
+## Summary
+| Metric | Value |
 |---|---|
-| **Lovable** | ✅ Supported (portability + security rules) |
-| **Bolt** | 🔜 Detection only (rules coming soon) |
-| **Replit** | 🔜 Detection only (rules coming soon) |
-| **Other/Unknown** | ✅ Universal security rules run on any project |
+| Portability Score | 85/100 (B) |
+| Security Score | 21/100 (F) |
+| Total Findings | 4 |
 
-## Known Limitations
+## Portability Findings
+* **Lovable-Scoped Package Dependencies** (Severity: High)
+  * File: `package.json`
+  * Action: Replace `@lovable.dev/ui` with open-source equivalent.
 
-This tool is honest about what it can and can't do:
+## Security Findings
+* **Hardcoded API Keys and Secrets** (Severity: Critical)
+  * File: `src/lib/supabaseClient.ts:7`
+  * Action: Move the Stripe API Key to an environment variable.
+```
 
-- **Heuristic-based detections** (like the IDOR check) may produce false positives. Every such finding clearly says so.
-- **Secret detection is regex-based** — it can miss non-standard key formats or flag test values. Always verify before rotating keys.
-- **Security rules are not a substitute for a professional security audit.** They catch the most common AI-generated-code issues, not all possible vulnerabilities.
-- **Portability rules currently focus on Lovable.** Bolt and Replit-specific lock-in rules are coming in future versions.
+---
 
 ## Development
 
 ```bash
+# Clone the repository
 git clone https://github.com/your-org/deviber-cli.git
 cd deviber-cli
 npm install
-npm run build            # Compile TypeScript
-npm test                 # Run fast unit test suite (50 tests)
-npm run test:integration # Run slow Docker integration tests (5 tests)
-npm run dev              # Watch mode
+
+# Compile TypeScript
+npm run build
+
+# Run fast unit test suite
+npm test
+
+# Run Docker-based integration tests
+npm run test:integration
 ```
 
-## Disclaimer
-
-This tool is provided **"as-is" with no warranty.** It uses automated pattern matching and heuristics that may produce false positives or miss real issues. Always verify findings manually before making changes to your project.
-
-This tool operates exclusively on code you have already exported. It never contacts any AI platform's servers, and never transmits your code or secrets anywhere.
+---
 
 ## License
 
 MIT — see [LICENSE](./LICENSE)
-# De-Viber
