@@ -473,7 +473,7 @@ RUN if [ -f pnpm-lock.yaml ]; then \
     elif [ -f yarn.lock ]; then \
       yarn install --frozen-lockfile; \
     else \
-      npm install; \
+      npm install --legacy-peer-deps; \
     fi
 
 COPY . .
