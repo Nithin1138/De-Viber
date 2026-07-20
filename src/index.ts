@@ -664,7 +664,21 @@ async function transform(targetPath: string, options: {
     console.log(`  • ${chalk.bold('.env.example')} (placeholder template)`);
   }
   console.log(chalk.dim('─'.repeat(60)));
-  console.log(chalk.cyan(`\nOriginal code is saved on backup branch: ${backupBranch}\n`));
+
+  // 6. Commit the transformed changes so the diff is visible and remote
+  //    deployment platforms (Vercel, Railway) pick up the clean code.
+  try {
+    await git.add('.');
+    await git.commit('chore(deviber): apply transform — remove platform lock-in, configure deployment');
+    console.log(chalk.green(`\n✅ Changes committed to git on branch: ${currentBranch}`));
+  } catch (commitErr: any) {
+    // Non-fatal: the files are already changed on disk, just warn the user
+    console.log(chalk.yellow(`\n⚠️  Could not auto-commit: ${commitErr.message}`));
+    console.log(chalk.yellow('   Run "git add . && git commit" manually to save the changes.'));
+  }
+
+  console.log(chalk.cyan(`\nOriginal code is saved on backup branch: ${backupBranch}`));
+  console.log(chalk.dim(`Run "git push" to push the transformed code to your remote.\n`));
   await saveVerificationStatus(projectRoot);
 }
 
