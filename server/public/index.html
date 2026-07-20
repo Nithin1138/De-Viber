@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>De-Viber Web Scanner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#060913; --card:rgba(255,255,255,0.03); --border:rgba(255,255,255,0.08); --text:#f8fafc; --dim:#94a3b8; --primary:#6366f1; --glow:rgba(99,102,241,0.2); --green:#10b981; --amber:#f59e0b; --red:#ef4444; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:Outfit,sans-serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
+    .container{width:100%;max-width:860px}
+    header{text-align:center;margin-bottom:2.5rem}
+    .logo{font-size:2.2rem;font-weight:800;letter-spacing:3px;background:linear-gradient(135deg,#6366f1,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .subtitle{color:var(--dim);margin:.4rem 0 .8rem;font-size:.95rem}
+    .badge{display:inline-block;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#10b981;padding:.25rem .8rem;border-radius:99px;font-size:.8rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2rem;margin-bottom:1.5rem}
+    .dropzone{border:2px dashed var(--primary);border-radius:14px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:.6rem}
+    .dropzone:hover{background:var(--glow);border-color:#818cf8}
+    .dropzone-icon{font-size:3rem}
+    .dropzone-title{font-size:1.1rem;font-weight:600}
+    .dropzone-hint{color:var(--dim);font-size:.85rem}
+    .btn-primary{background:var(--primary);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:12px;font-family:Outfit,sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;margin-top:.5rem}
+    .btn-primary:hover{background:#4f52e3;transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.5;cursor:default;transform:none}
+    .btn-secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);padding:.7rem 1.2rem;border-radius:12px;font-family:Outfit,sans-serif;font-size:.9rem;cursor:pointer;transition:all .2s}
+    .btn-secondary:hover{background:rgba(255,255,255,.1)}
+    .path-row{display:flex;gap:.75rem;margin-top:1.2rem}
+    .path-input{flex:1;background:#04060a;border:1px solid var(--border);border-radius:12px;padding:.75rem 1rem;color:var(--text);font-family:Outfit,sans-serif;font-size:.95rem;outline:none;transition:border-color .2s}
+    .path-input:focus{border-color:var(--primary)}
+    .terminal{background:#03050a;border:1px solid #1e293b;border-radius:12px;padding:1rem;margin-top:1.2rem;font-family:'Courier New',monospace;font-size:.8rem;max-height:200px;overflow-y:auto;display:none}
+    .t-line{padding:.15rem 0;color:#94a3b8}
+    .t-ts{color:#475569;margin-right:.4rem}
+    .t-ok{color:#10b981}
+    .t-err{color:#ef4444}
+    #dashboard{display:none}
+    .scores-row{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+    .score-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.8rem;display:flex;align-items:center;gap:1.5rem}
+    .ring{width:100px;height:100px;border-radius:50%;border:4px solid var(--primary);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 24px var(--glow);flex-shrink:0}
+    .ring-grade{font-size:2rem;font-weight:800;line-height:1}
+    .ring-score{font-size:.7rem;color:var(--dim)}
+    .score-label h3{font-size:1rem;font-weight:600;margin-bottom:.3rem}
+    .score-label p{color:var(--dim);font-size:.85rem}
+    .findings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .findings-header span:first-child{font-weight:600;font-size:1rem}
+    .finding-item{border:1px solid var(--border);border-radius:12px;margin-bottom:.75rem;overflow:hidden}
+    .finding-top{display:flex;align-items:center;gap:.75rem;padding:.9rem 1rem;cursor:pointer;transition:background .15s}
+    .finding-top:hover{background:rgba(255,255,255,.03)}
+    .badge-sev{padding:.2rem .6rem;border-radius:99px;font-size:.7rem;font-weight:700;text-transform:uppercase;flex-shrink:0}
+    .badge-critical{background:rgba(239,68,68,.2);color:#ef4444;border:1px solid #ef4444}
+    .badge-high{background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid #f59e0b}
+    .badge-medium{background:rgba(99,102,241,.2);color:#818cf8;border:1px solid #818cf8}
+    .badge-info{background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid #94a3b8}
+    .finding-title{font-size:.9rem;font-weight:500;flex:1}
+    .finding-file{color:var(--dim);font-size:.75rem;margin-left:auto;flex-shrink:0}
+    .finding-body{padding:0 1rem .9rem;border-top:1px solid var(--border);display:none}
+    .finding-body p{font-size:.85rem;color:var(--dim);margin-top:.6rem}
+    .finding-evidence{background:#0a0e1a;border-radius:8px;padding:.5rem .75rem;margin-top:.5rem;font-family:monospace;font-size:.78rem;color:#a5b4fc;word-break:break-all}
+    .actions-bar{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100}
+    .modal{background:#0d1117;border:1px solid var(--border);border-radius:20px;padding:2.5rem;max-width:480px;width:90%;text-align:center}
+    .modal h3{font-size:1.3rem;margin-bottom:.6rem}
+    .modal p{color:var(--dim);font-size:.9rem;margin-bottom:1.2rem}
+    .modal-url{background:#03050a;border:1px solid var(--border);border-radius:10px;padding:.7rem 1rem;font-family:monospace;font-size:.8rem;color:#a5b4fc;word-break:break-all;margin-bottom:1.2rem}
+    @media(max-width:600px){.scores-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">DE-VIBER WEB SCANNER</div>
+    <div class="subtitle">Audit your Lovable &amp; Bolt codebases client-side for vendor lock-in &amp; security risks</div>
+    <span class="badge">🔒 100% Local &amp; Private</span>
+  </header>
+
+  <div class="card" id="setup-card">
+    <div class="dropzone" id="dropzone-area">
+      <div class="dropzone-icon">📂</div>
+      <div class="dropzone-title">Select Exported Project Directory</div>
+      <div class="dropzone-hint">Folder analysis runs entirely in your browser. No code is uploaded.</div>
+      <button class="btn-primary" id="btn-browse">Browse Directory</button>
+      <input type="file" id="file-input" webkitdirectory directory multiple style="display:none">
+    </div>
+
+    <div class="path-row" id="path-row">
+      <input class="path-input" id="path-input" placeholder="Or enter full path, e.g. /Users/name/my-project — then press Enter or Scan">
+      <button class="btn-primary" id="btn-scan-path">Scan Path</button>
+    </div>
+
+    <div class="terminal" id="terminal"></div>
+  </div>
+
+  <div id="dashboard">
+    <div class="scores-row">
+      <div class="score-card">
+        <div class="ring" id="p-ring">
+          <div class="ring-grade" id="p-grade">-</div>
+          <div class="ring-score" id="p-score">--/100</div>
+        </div>
+        <div class="score-label">
+          <h3>Portability Score</h3>
+          <p id="p-platform">Source: -</p>
+          <p id="p-count">0 lock-in indicators</p>
+        </div>
+      </div>
+      <div class="score-card">
+        <div class="ring" id="s-ring">
+          <div class="ring-grade" id="s-grade">-</div>
+          <div class="ring-score" id="s-score">--/100</div>
+        </div>
+        <div class="score-label">
+          <h3>Security Score</h3>
+          <p>Production Readiness</p>
+          <p id="s-count">0 warnings</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="findings-header">
+        <span>Audit Findings</span>
+        <span id="findings-count" style="color:var(--dim);font-size:.9rem">0 total</span>
+      </div>
+      <div id="findings-list"></div>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn-secondary" id="btn-rescan">Rescan</button>
+      <button class="btn-secondary" id="btn-report">Download B2B Report</button>
+      <button class="btn-primary" id="btn-share">Share Score Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="share-modal">
+  <div class="modal">
+    <h3>Score Shared!</h3>
+    <p>Only score numbers shared. Source code stays 100% private.</p>
+    <div class="modal-url" id="modal-link"></div>
+    <button class="btn-primary" id="btn-copy-close">Copy URL &amp; Close</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var report = null;
+
+  var setupCard   = document.getElementById('setup-card');
+  var dashboard   = document.getElementById('dashboard');
+  var terminal    = document.getElementById('terminal');
+  var fileInput   = document.getElementById('file-input');
+  var pathInput   = document.getElementById('path-input');
+  var dropzone    = document.getElementById('dropzone-area');
+  var pathRow     = document.getElementById('path-row');
+
+  document.getElementById('btn-browse').addEventListener('click', function(e) {
+    e.stopPropagation();
+    fileInput.click();
+  });
+
+  dropzone.addEventListener('click', function() { fileInput.click(); });
+
+  fileInput.addEventListener('change', function(e) {
+    var files = e.target.files;
+    if (!files || files.length === 0) return;
+    startBrowserScan(files);
+  });
+
+  document.getElementById('btn-scan-path').addEventListener('click', startPathScan);
+  pathInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') startPathScan(); });
+  document.getElementById('btn-rescan').addEventListener('click', resetScanner);
+  document.getElementById('btn-report').addEventListener('click', downloadReport);
+  document.getElementById('btn-share').addEventListener('click', shareScore);
+  document.getElementById('btn-copy-close').addEventListener('click', copyAndClose);
+
+  function startPathScan() {
+    var p = pathInput.value.trim();
+    if (!p) { alert('Please enter a directory path first.'); return; }
+    showTerminal();
+    tlog('Sending path to server: ' + p);
+
+    fetch('/api/scan-local-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: p })
+    })
+    .then(function(res) {
+      if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Server error ' + res.status); });
+      return res.json();
+    })
+    .then(function(data) {
+      var pF = (data.findings || []).filter(function(f) { return f.category === 'portability'; });
+      var sF = (data.findings || []).filter(function(f) { return f.category === 'security'; });
+      report = {
+        projectName: data.projectName || 'project',
+        detectedPlatform: (data.platformDetection && data.platformDetection.platform) || 'unknown',
+        portabilityScore: data.portabilityScore || { score: 50, grade: 'C', findingsCount: pF.length },
+        securityScore:    data.securityScore    || { score: 50, grade: 'C', findingsCount: sF.length },
+        findings: data.findings || []
+      };
+      if (!report.portabilityScore.findingsCount) report.portabilityScore.findingsCount = pF.length;
+      if (!report.securityScore.findingsCount)    report.securityScore.findingsCount    = sF.length;
+      tlog('Complete! ' + report.findings.length + ' findings.', 'ok');
+      setTimeout(showDashboard, 500);
+    })
+    .catch(function(err) {
+      tlog('Error: ' + err.message, 'err');
+    });
+  }
+
+  function startBrowserScan(files) {
+    showTerminal();
+    var all = Array.from(files).filter(function(f) {
+      var p = f.webkitRelativePath.toLowerCase();
+      return !p.includes('node_modules') && !p.includes('.git') && !p.includes('dist/') && !p.includes('.next/');
+    });
+    tlog('Loaded ' + all.length + ' files. Running analysis...');
+
+    var hasBolt = all.some(function(f) { return f.webkitRelativePath.includes('.bolt'); });
+    var detectedPlatform = hasBolt ? 'bolt' : 'lovable';
+    var findings = [];
+    var projectName = 'scanned-project';
+
+    var readers = all.map(function(file) {
+      return new Promise(function(resolve) {
+        var rel = file.webkitRelativePath.split('/').slice(1).join('/');
+        if (!rel) { resolve(); return; }
+
+        var isCode = /\.(ts|tsx|js|jsx)$/.test(rel);
+        var isSql  = rel.endsWith('.sql');
+        var isPkg  = file.name === 'package.json';
+
+        if (!isCode && !isSql && !isPkg) { resolve(); return; }
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var content = e.target.result;
+
+          if (isPkg) {
+            try {
+              var pkg = JSON.parse(content);
+              projectName = pkg.name || projectName;
+              var deps = Object.assign({}, pkg.dependencies, pkg.devDependencies);
+              Object.keys(deps).forEach(function(dep) {
+                if (dep.indexOf('@lovable') === 0 || dep === 'lovable-tagger') {
+                  findings.push({ id:'PORT_001', category:'portability', severity:'high', file:rel, line:1,
+                    message:'Proprietary dep: ' + dep,
+                    userActionableMessage:'Replace with open-source alternative.',
+                    evidence:'"' + dep + '": "' + deps[dep] + '"' });
+                }
+              });
+            } catch(ex) {}
+          }
+
+          if (rel.includes('.lovable/')) {
+            findings.push({ id:'PORT_002', category:'portability', severity:'high', file:rel, line:1,
+              message:'Lovable platform config directory',
+              userActionableMessage:'Delete when migrating.', evidence:'Path: ' + rel });
+          }
+
+          if (isCode) {
+            var lines = content.split('\n');
+            lines.forEach(function(ln, i) {
+              if (/sk_test_[a-zA-Z0-9]{24,}|sk_live_[a-zA-Z0-9]{24,}/.test(ln)) {
+                findings.push({ id:'SEC_001', category:'security', severity:'critical', file:rel, line:i+1,
+                  message:'Hardcoded Stripe API key', userActionableMessage:'Move to env var.', evidence:ln.trim() });
+              }
+              if (/eyJhbGciOi/.test(ln)) {
+                findings.push({ id:'SEC_002', category:'security', severity:'critical', file:rel, line:i+1,
+                  message:'Hardcoded JWT token', userActionableMessage:'Move to env var.', evidence:ln.trim() });
+              }
+              if (ln.indexOf('@lovable-generated') !== -1 || ln.indexOf('// @lovable') !== -1) {
+                findings.push({ id:'PORT_003', category:'portability', severity:'info', file:rel, line:i+1,
+                  message:'Lovable generator marker', userActionableMessage:'Safe to remove.', evidence:ln.trim() });
+              }
+              if (ln.indexOf('supabase.lovable.app') !== -1) {
+                findings.push({ id:'PORT_004', category:'portability', severity:'critical', file:rel, line:i+1,
+                  message:'Lovable-managed Supabase endpoint', userActionableMessage:'Export DB before expiry.', evidence:ln.trim() });
+              }
+            });
+          }
+
+          if (isSql) {
+            if (/create table/i.test(content) && !/enable row level security/i.test(content)) {
+              findings.push({ id:'SEC_003', category:'security', severity:'high', file:rel, line:1,
+                message:'Table missing RLS', userActionableMessage:'Add ENABLE ROW LEVEL SECURITY.', evidence:'No RLS found' });
+            }
+          }
+
+          resolve();
+        };
+        reader.onerror = function() { resolve(); };
+        reader.readAsText(file);
+      });
+    });
+
+    Promise.all(readers).then(function() {
+      var pF = findings.filter(function(f) { return f.category === 'portability'; });
+      var sF = findings.filter(function(f) { return f.category === 'security'; });
+      function calcScore(arr) { return Math.max(0, 100 - arr.reduce(function(a, f) { return a + (f.severity==='critical'?20:f.severity==='high'?10:f.severity==='medium'?5:1); }, 0)); }
+      var pScore = calcScore(pF), sScore = calcScore(sF);
+
+      report = {
+        projectName: projectName,
+        detectedPlatform: detectedPlatform,
+        portabilityScore: { score: pScore, grade: grade(pScore), findingsCount: pF.length },
+        securityScore:    { score: sScore, grade: grade(sScore), findingsCount: sF.length },
+        findings: findings
+      };
+
+      tlog('Audit complete. ' + findings.length + ' findings.', 'ok');
+      setTimeout(showDashboard, 500);
+    });
+  }
+
+  function grade(s) { return s>=90?'A':s>=80?'B':s>=70?'C':s>=50?'D':'F'; }
+  function gradeColor(g) { return 'AB'.indexOf(g)!==-1?'#10b981':'CD'.indexOf(g)!==-1?'#f59e0b':'#ef4444'; }
+
+  function showTerminal() {
+    terminal.innerHTML = '';
+    terminal.style.display = 'block';
+    dropzone.style.display = 'none';
+    pathRow.style.display = 'none';
+  }
+
+  function tlog(msg, type) {
+    var d = document.createElement('div');
+    d.className = 't-line';
+    var ts = new Date().toLocaleTimeString();
+    var cls = type === 'ok' ? 't-ok' : type === 'err' ? 't-err' : '';
+    d.innerHTML = '<span class="t-ts">[' + ts + ']</span> <span class="' + cls + '">' + msg + '</span>';
+    terminal.appendChild(d);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  function showDashboard() {
+    setupCard.style.display = 'none';
+    dashboard.style.display = 'block';
+    renderDashboard();
+  }
+
+  function renderDashboard() {
+    var ps = report.portabilityScore;
+    var ss = report.securityScore;
+
+    document.getElementById('p-grade').textContent = ps.grade;
+    document.getElementById('p-score').textContent = ps.score + '/100';
+    document.getElementById('p-ring').style.borderColor = gradeColor(ps.grade);
+    document.getElementById('p-ring').style.boxShadow = '0 0 24px ' + gradeColor(ps.grade) + '44';
+    document.getElementById('p-platform').textContent = 'Source: ' + report.detectedPlatform;
+    document.getElementById('p-count').textContent = (ps.findingsCount || 0) + ' lock-in indicators';
+
+    document.getElementById('s-grade').textContent = ss.grade;
+    document.getElementById('s-score').textContent = ss.score + '/100';
+    document.getElementById('s-ring').style.borderColor = gradeColor(ss.grade);
+    document.getElementById('s-ring').style.boxShadow = '0 0 24px ' + gradeColor(ss.grade) + '44';
+    document.getElementById('s-count').textContent = (ss.findingsCount || 0) + ' warnings';
+
+    var list = document.getElementById('findings-list');
+    list.innerHTML = '';
+    document.getElementById('findings-count').textContent = report.findings.length + ' total';
+
+    if (report.findings.length === 0) {
+      list.innerHTML = '<p style="text-align:center;color:var(--dim);padding:2rem">No major findings detected!</p>';
+      return;
+    }
+
+    report.findings.forEach(function(f, i) {
+      var item = document.createElement('div');
+      item.className = 'finding-item';
+      var fname = (f.file || '').split('/').pop();
+      item.innerHTML =
+        '<div class="finding-top" data-idx="' + i + '">' +
+          '<span class="badge-sev badge-' + f.severity + '">' + f.severity + '</span>' +
+          '<span class="finding-title">' + esc(f.message) + '</span>' +
+          '<span class="finding-file">' + esc(fname) + ':' + (f.line||1) + '</span>' +
+        '</div>' +
+        '<div class="finding-body" id="fb-' + i + '">' +
+          '<p>' + esc(f.userActionableMessage || '') + '</p>' +
+          (f.evidence ? '<div class="finding-evidence">' + esc(f.evidence) + '</div>' : '') +
+        '</div>';
+      list.appendChild(item);
+      item.querySelector('.finding-top').addEventListener('click', function() {
+        var b = document.getElementById('fb-' + i);
+        b.style.display = b.style.display === 'block' ? 'none' : 'block';
+      });
+    });
+  }
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function resetScanner() {
+    report = null;
+    dashboard.style.display = 'none';
+    setupCard.style.display = 'block';
+    terminal.style.display = 'none';
+    terminal.innerHTML = '';
+    dropzone.style.display = 'flex';
+    pathRow.style.display = 'flex';
+    fileInput.value = '';
+    pathInput.value = '';
+  }
+
+  function downloadReport() {
+    if (!report) return;
+    var ps = report.portabilityScore, ss = report.securityScore;
+    var totalH = 0, rows = '';
+    report.findings.forEach(function(f, i) {
+      var h = 0.5, act = 'Review finding.';
+      if (f.category === 'portability') {
+        if (f.severity === 'critical') { h=8; act='Export cloud data.'; }
+        else if (f.severity === 'high') { h=4; act='Replace proprietary dep.'; }
+      } else {
+        if (f.severity === 'critical') { h=8; act='Remove hardcoded secret.'; }
+        else if (f.severity === 'high') { h=4; act='Fix auth/RLS.'; }
+      }
+      totalH += h;
+      rows += '| ' + (i+1) + ' | ' + f.category + ' | ' + f.severity.toUpperCase() + ' | ' + h + 'h | ' + f.message + ' | ' + act + ' |\n';
+    });
+    var md = '# B2B Due Diligence Report\n\n'
+      + '**Project:** ' + report.projectName + '\n'
+      + '**Platform:** ' + report.detectedPlatform + '\n'
+      + '**Date:** ' + new Date().toLocaleDateString() + '\n\n---\n\n'
+      + '## Scorecard\n\n| Dimension | Score | Grade |\n|---|---|---|\n'
+      + '| Portability | ' + ps.score + '/100 | ' + ps.grade + ' |\n'
+      + '| Security    | ' + ss.score + '/100 | ' + ss.grade + ' |\n\n'
+      + '## Roadmap\n\n| # | Category | Severity | Effort | Finding | Action |\n|---|---|---|---|---|---|\n' + rows;
+    var blob = new Blob([md], { type: 'text/markdown' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = report.projectName + '_diligence.md'; a.click();
+  }
+
+  function shareScore() {
+    if (!report) return;
+    var btn = document.getElementById('btn-share');
+    btn.textContent = 'Sharing...'; btn.disabled = true;
+    var ps = report.portabilityScore, ss = report.securityScore;
+    var hash = 'web-' + report.projectName.replace(/[^a-z0-9]/gi,'').slice(0,16);
+    fetch('/api/scans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectNameHash: hash,
+        platform: report.detectedPlatform,
+        overallScore: ps.score,
+        lockInSeverity: ps.score < 50 ? 'high' : 'medium',
+        codeQualityScore: ss.score,
+        grade: ps.grade,
+        factors: report.findings.map(function(f) { return { name: f.message, weight:1, detectedCount:1, severity:f.severity }; })
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('modal-link').textContent = window.location.origin + '/shares/' + d.id;
+      document.getElementById('share-modal').style.display = 'flex';
+      btn.textContent = 'Share Score Dashboard'; btn.disabled = false;
+    })
+    .catch(function() { btn.textContent = 'Share Score Dashboard'; btn.disabled = false; });
+  }
+
+  function copyAndClose() {
+    var url = document.getElementById('modal-link').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(url).catch(function(){});
+    document.getElementById('share-modal').style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>
