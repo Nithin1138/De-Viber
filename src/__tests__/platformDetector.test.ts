@@ -44,6 +44,18 @@ describe('Platform Detector', () => {
     });
   });
 
+  describe('Bolt detection', () => {
+    it('detects bolt-basic-lockup with high confidence', async () => {
+      const root = resolve(FIXTURES_ROOT, 'bolt-basic-lockup');
+      const files = await getFixtureFiles('bolt-basic-lockup');
+      const result = await detectPlatform(root, files);
+
+      expect(result.platform).toBe('bolt');
+      expect(result.confidence).toBe('high');
+      expect(result.signals.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   describe('Unknown platform (true negatives)', () => {
     it('returns unknown for frontend-only project with no platform markers', async () => {
       const root = resolve(FIXTURES_ROOT, 'frontend-only');

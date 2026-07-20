@@ -29,6 +29,7 @@ import type {
 import { detectPlatform } from './detectors/platformDetector.js';
 import { runRules } from './rules/engine.js';
 import { lovableRules } from './rules/lovable/rules.js';
+import { boltRules } from './rules/bolt/rules.js';
 import { securityRules } from './rules/universal/security.rules.js';
 import { dependencyRules } from './rules/universal/dependencies.js';
 import { DockerVerifier } from './verifier/dockerVerifier.js';
@@ -247,9 +248,9 @@ async function analyse(targetPath: string, options: {
     detectedPlatform: platformDetection,
   };
 
-  // Assemble rules
   const allRules = [
     ...lovableRules,
+    ...boltRules,
     ...securityRules,
     ...dependencyRules,
   ];

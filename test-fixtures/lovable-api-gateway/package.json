@@ -1,0 +1,9 @@
+{
+  "name": "lovable-api-gateway-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "lovable-tagger": "^1.1.11",
+    "vite": "^5.0.0"
+  }
+}

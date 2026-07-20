@@ -169,7 +169,7 @@ const boltSignals: PlatformSignalCheck[] = [
   {
     platform: 'bolt',
     type: 'package.json marker',
-    detail: 'Bolt-specific packages or scripts found',
+    detail: 'Bolt or StackBlitz-specific packages found',
     weight: 2,
     check: async (root) => {
       const pkg = await safeParseJson(join(root, 'package.json'));
@@ -179,7 +179,7 @@ const boltSignals: PlatformSignalCheck[] = [
         ...(pkg.devDependencies as Record<string, string> | undefined),
       };
       return Object.keys(allDeps).some(
-        (dep) => dep.startsWith('@bolt') || dep.includes('bolt-')
+        (dep) => dep.startsWith('@bolt') || dep.startsWith('@stackblitz/') || dep.includes('bolt-')
       );
     },
   },

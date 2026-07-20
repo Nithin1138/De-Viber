@@ -1,0 +1,11 @@
+{
+  "name": "bolt-basic-lockup-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@stackblitz/sdk": "^1.9.0"
+  },
+  "devDependencies": {
+    "bolt-tagger": "^0.1.0"
+  }
+}

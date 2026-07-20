@@ -14,6 +14,7 @@ import fg from 'fast-glob';
 import type { RuleContext, PackageJsonData, PlatformDetection } from '../types.js';
 import { runRules } from '../rules/engine.js';
 import { lovableRules } from '../rules/lovable/rules.js';
+import { boltRules } from '../rules/bolt/rules.js';
 import { securityRules } from '../rules/universal/security.rules.js';
 
 const FIXTURES_ROOT = resolve(import.meta.dirname, '../../test-fixtures');
@@ -89,6 +90,17 @@ describe('Lovable Rules', () => {
         (f) => f.ruleId === 'LOVABLE_SCOPED_DEP_001'
       );
       expect(depFindings.length).toBe(1);
+    });
+
+    it('fires on lovable-api-gateway (has lovable-tagger)', async () => {
+      const context = await buildContext('lovable-api-gateway');
+      const { findings } = await runRules(lovableRules, context);
+
+      const depFindings = findings.filter(
+        (f) => f.ruleId === 'LOVABLE_SCOPED_DEP_001'
+      );
+      expect(depFindings.length).toBe(1);
+      expect(depFindings[0].message).toContain('lovable-tagger');
     });
 
     it('does NOT fire on frontend-only (no lovable deps)', async () => {
@@ -181,6 +193,109 @@ describe('Lovable Rules', () => {
         (f) => f.ruleId === 'LOVABLE_CLOUD_DATA_RISK_001'
       );
       expect(cloudFindings).toHaveLength(0);
+    });
+  });
+
+  describe('LOVABLE_API_GATEWAY_001 — Lovable AI Gateway Dependency', () => {
+    it('fires on lovable-api-gateway (has gateway URL and LOVABLE_API_KEY)', async () => {
+      const context = await buildContext('lovable-api-gateway');
+      const { findings } = await runRules(lovableRules, context);
+
+      const gatewayFindings = findings.filter(
+        (f) => f.ruleId === 'LOVABLE_API_GATEWAY_001'
+      );
+      expect(gatewayFindings.length).toBe(2); // one for URL, one for env var
+      expect(gatewayFindings[0].severity).toBe('high');
+      expect(gatewayFindings[0].category).toBe('portability');
+    });
+
+    it('does NOT fire on frontend-only (clean code)', async () => {
+      const context = await buildContext('frontend-only');
+      const { findings } = await runRules(lovableRules, context);
+
+      const gatewayFindings = findings.filter(
+        (f) => f.ruleId === 'LOVABLE_API_GATEWAY_001'
+      );
+      expect(gatewayFindings).toHaveLength(0);
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOLT RULES
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Bolt Rules', () => {
+  const boltContextOverride = {
+    detectedPlatform: { platform: 'bolt' as const, confidence: 'high' as const, signals: [] }
+  };
+
+  describe('BOLT_SCOPED_DEP_001 — Bolt-Scoped Package Dependencies', () => {
+    it('fires on bolt-basic-lockup (has @stackblitz/sdk and bolt-tagger)', async () => {
+      const context = await buildContext('bolt-basic-lockup', boltContextOverride);
+      const { findings } = await runRules(boltRules, context);
+
+      const depFindings = findings.filter(
+        (f) => f.ruleId === 'BOLT_SCOPED_DEP_001'
+      );
+      expect(depFindings.length).toBe(2);
+      expect(depFindings[0].severity).toBe('high');
+    });
+
+    it('does NOT fire on frontend-only', async () => {
+      const context = await buildContext('frontend-only', boltContextOverride);
+      const { findings } = await runRules(boltRules, context);
+
+      const depFindings = findings.filter(
+        (f) => f.ruleId === 'BOLT_SCOPED_DEP_001'
+      );
+      expect(depFindings).toHaveLength(0);
+    });
+  });
+
+  describe('BOLT_CONFIG_001 — Bolt-Specific Configuration Files', () => {
+    it('fires on bolt-basic-lockup (has .bolt/ directory)', async () => {
+      const context = await buildContext('bolt-basic-lockup', boltContextOverride);
+      const { findings } = await runRules(boltRules, context);
+
+      const configFindings = findings.filter(
+        (f) => f.ruleId === 'BOLT_CONFIG_001'
+      );
+      expect(configFindings.length).toBe(1);
+      expect(configFindings[0].severity).toBe('medium');
+    });
+
+    it('does NOT fire on frontend-only', async () => {
+      const context = await buildContext('frontend-only', boltContextOverride);
+      const { findings } = await runRules(boltRules, context);
+
+      const configFindings = findings.filter(
+        (f) => f.ruleId === 'BOLT_CONFIG_001'
+      );
+      expect(configFindings).toHaveLength(0);
+    });
+  });
+
+  describe('BOLT_RUNTIME_ASSUMPTION_001 — WebContainer Runtime Assumptions', () => {
+    it('fires on bolt-basic-lockup (has webcontainer and stackblitz in index.tsx)', async () => {
+      const context = await buildContext('bolt-basic-lockup', boltContextOverride);
+      const { findings } = await runRules(boltRules, context);
+
+      const assumptionFindings = findings.filter(
+        (f) => f.ruleId === 'BOLT_RUNTIME_ASSUMPTION_001'
+      );
+      expect(assumptionFindings.length).toBe(3);
+      expect(assumptionFindings[0].severity).toBe('medium');
+    });
+
+    it('does NOT fire on frontend-only', async () => {
+      const context = await buildContext('frontend-only', boltContextOverride);
+      const { findings } = await runRules(boltRules, context);
+
+      const assumptionFindings = findings.filter(
+        (f) => f.ruleId === 'BOLT_RUNTIME_ASSUMPTION_001'
+      );
+      expect(assumptionFindings).toHaveLength(0);
     });
   });
 });
@@ -451,5 +566,18 @@ describe('Full Fixture Integration', () => {
 
     expect(securityFindings).toHaveLength(0);
     expect(portFindings.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('bolt-basic-lockup produces the expected Bolt findings', async () => {
+    const context = await buildContext('bolt-basic-lockup', {
+      detectedPlatform: { platform: 'bolt' as const, confidence: 'high' as const, signals: [] }
+    });
+    const allRules = [...boltRules, ...securityRules];
+    const { findings } = await runRules(allRules, context);
+
+    const ruleIds = new Set(findings.map((f) => f.ruleId));
+    expect(ruleIds.has('BOLT_SCOPED_DEP_001')).toBe(true);
+    expect(ruleIds.has('BOLT_CONFIG_001')).toBe(true);
+    expect(ruleIds.has('BOLT_RUNTIME_ASSUMPTION_001')).toBe(true);
   });
 });
