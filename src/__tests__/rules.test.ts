@@ -230,29 +230,6 @@ describe('Bolt Rules', () => {
     detectedPlatform: { platform: 'bolt' as const, confidence: 'high' as const, signals: [] }
   };
 
-  describe('BOLT_SCOPED_DEP_001 — Bolt-Scoped Package Dependencies', () => {
-    it('fires on bolt-basic-lockup (has @stackblitz/sdk and bolt-tagger)', async () => {
-      const context = await buildContext('bolt-basic-lockup', boltContextOverride);
-      const { findings } = await runRules(boltRules, context);
-
-      const depFindings = findings.filter(
-        (f) => f.ruleId === 'BOLT_SCOPED_DEP_001'
-      );
-      expect(depFindings.length).toBe(2);
-      expect(depFindings[0].severity).toBe('high');
-    });
-
-    it('does NOT fire on frontend-only', async () => {
-      const context = await buildContext('frontend-only', boltContextOverride);
-      const { findings } = await runRules(boltRules, context);
-
-      const depFindings = findings.filter(
-        (f) => f.ruleId === 'BOLT_SCOPED_DEP_001'
-      );
-      expect(depFindings).toHaveLength(0);
-    });
-  });
-
   describe('BOLT_CONFIG_001 — Bolt-Specific Configuration Files', () => {
     it('fires on bolt-basic-lockup (has .bolt/ directory)', async () => {
       const context = await buildContext('bolt-basic-lockup', boltContextOverride);
@@ -273,29 +250,6 @@ describe('Bolt Rules', () => {
         (f) => f.ruleId === 'BOLT_CONFIG_001'
       );
       expect(configFindings).toHaveLength(0);
-    });
-  });
-
-  describe('BOLT_RUNTIME_ASSUMPTION_001 — WebContainer Runtime Assumptions', () => {
-    it('fires on bolt-basic-lockup (has webcontainer and stackblitz in index.tsx)', async () => {
-      const context = await buildContext('bolt-basic-lockup', boltContextOverride);
-      const { findings } = await runRules(boltRules, context);
-
-      const assumptionFindings = findings.filter(
-        (f) => f.ruleId === 'BOLT_RUNTIME_ASSUMPTION_001'
-      );
-      expect(assumptionFindings.length).toBe(3);
-      expect(assumptionFindings[0].severity).toBe('medium');
-    });
-
-    it('does NOT fire on frontend-only', async () => {
-      const context = await buildContext('frontend-only', boltContextOverride);
-      const { findings } = await runRules(boltRules, context);
-
-      const assumptionFindings = findings.filter(
-        (f) => f.ruleId === 'BOLT_RUNTIME_ASSUMPTION_001'
-      );
-      expect(assumptionFindings).toHaveLength(0);
     });
   });
 });
@@ -576,8 +530,18 @@ describe('Full Fixture Integration', () => {
     const { findings } = await runRules(allRules, context);
 
     const ruleIds = new Set(findings.map((f) => f.ruleId));
-    expect(ruleIds.has('BOLT_SCOPED_DEP_001')).toBe(true);
     expect(ruleIds.has('BOLT_CONFIG_001')).toBe(true);
-    expect(ruleIds.has('BOLT_RUNTIME_ASSUMPTION_001')).toBe(true);
+  });
+
+  it('bolt-experiences-idor produces configuration and IDOR security findings', async () => {
+    const context = await buildContext('bolt-experiences-idor', {
+      detectedPlatform: { platform: 'bolt' as const, confidence: 'high' as const, signals: [] }
+    });
+    const allRules = [...boltRules, ...securityRules];
+    const { findings } = await runRules(allRules, context);
+
+    const ruleIds = new Set(findings.map((f) => f.ruleId));
+    expect(ruleIds.has('BOLT_CONFIG_001')).toBe(true);
+    expect(ruleIds.has('SEC_POSSIBLE_IDOR_001')).toBe(true);
   });
 });

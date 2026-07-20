@@ -1,0 +1,12 @@
+{
+  "name": "bolt-experiences-idor-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "lucide-react": "^0.344.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@supabase/supabase-js": "^2.39.7",
+    "react-router-dom": "^6.22.2"
+  }
+}

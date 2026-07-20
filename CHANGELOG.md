@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security Responsible Disclosure Policy**:
   - Added `SECURITY.md` detailing responsible disclosure protocols and limitations of scan heuristics.
 - **Bolt Adapter Pack (Priority 5)**:
-  - Added Bolt-specific detection rules: `BOLT_CONFIG_001` (validated config/directory checks), `BOLT_SCOPED_DEP_001` (unvalidated Bolt-scoped package dependency checking), and `BOLT_RUNTIME_ASSUMPTION_001` (unvalidated StackBlitz WebContainer runtime assumption checks).
+  - Added Bolt-specific detection rules: `BOLT_CONFIG_001` (validated config/directory checks).
+  - Retired `BOLT_SCOPED_DEP_001` (proprietary build dependencies) and `BOLT_RUNTIME_ASSUMPTION_001` (WebContainer runtime assumptions) after manual inspection of real Bolt exports confirmed they do not apply to exported projects.
   - Extended platform detector to recognize Bolt/StackBlitz-specific packages (`@stackblitz/`, `@bolt/`, and `bolt-tagger`).
 
 
