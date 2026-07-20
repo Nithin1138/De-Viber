@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-20
+
+### Added
+- **Guided Deploy Phase (Priority 5)**:
+  - Added `deploy` command to close the end-to-end pipeline (Analyse → Transform → Verify → Deploy).
+  - Walkthrough logic prompts users for target hosting platforms (Vercel, Railway, Netlify, Manual), prompts for template keys from `.env.example`, triggers platforms CLIs, and performs live route smoke pings.
+  - Implemented verification state checks requiring a prior successful `verify` run to enforce pipeline safety.
+  - Created a false-positive bug reporting template `.github/ISSUE_TEMPLATE/false_positive_report.md` and added a reporting link at the bottom of the CLI scan report.
+
+### Fixed
+- **Staleness check false positives**: Updated git status checking to filter out `.deviber/` status folder modifications. Added `.deviber` to `.gitignore` to prevent untracked status records from dirtying the working directory.
+
 ## [0.2.0] - 2026-07-20
 
 ### Added
@@ -27,10 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added Bolt-specific detection rules: `BOLT_CONFIG_001` (validated config/directory checks).
   - Retired `BOLT_SCOPED_DEP_001` (proprietary build dependencies) and `BOLT_RUNTIME_ASSUMPTION_001` (WebContainer runtime assumptions) after manual inspection of real Bolt exports confirmed they do not apply to exported projects.
   - Extended platform detector to recognize Bolt/StackBlitz-specific packages (`@stackblitz/`, `@bolt/`, and `bolt-tagger`).
-- **Independent Deploy Phase (Priority 5)**:
-  - Added `deploy` command to close the 4-phase audit pipeline (Analyse → Transform → Verify → Deploy).
-  - Enforces prior successful verification checks, prompts for env variables from `.env.example`, provides manual/automated platform-specific deployment guides, and runs live smoke testing.
-
 
 
 ### Fixed
