@@ -17,6 +17,7 @@
  */
 
 import type { Rule, RuleContext, Finding } from '../../types.js';
+import type { FunctionSymbol } from '../../ir/types.js';
 import { join } from 'node:path';
 
 let findingCounter = 0;
@@ -483,22 +484,100 @@ const possibleIDOR: Rule = {
     const targetFiles = context.files.filter(
       (f) =>
         (f.endsWith('.ts') || f.endsWith('.tsx') || f.endsWith('.js') || f.endsWith('.jsx')) &&
-        !f.includes('node_modules')
+        !f.includes('node_modules') &&
+        !f.includes('.git')
     );
 
-    // Pattern: supabase.from('table')...eq('id', something)
-    // We look for .from() calls followed by .eq('id', ...) in the same statement chain
-    const fromPattern = /\.from\s*\(\s*['"`](\w+)['"`]\s*\)/g;
+    // If IR is present, use structural AST analysis
+    if (context.ir) {
+      const ir = context.ir;
+      for (const binding of ir.dataBindings) {
+        if (binding.type !== 'database') continue;
 
+        const expr = binding.expression;
+        // Must contain .from(...) and .eq('id', ...) or similar ID filter
+        const hasFrom = /\.from\s*\(\s*['"`]\w+['"`]\s*\)/.test(expr);
+        const hasIdEq = /\.eq\s*\(\s*['"`](?:id)['"`]/.test(expr) || 
+                        /\.filter\s*\(\s*['"`]id['"`]/.test(expr) ||
+                        /\.match\s*\(\s*\{\s*id\s*:/.test(expr);
+
+        if (!hasFrom || !hasIdEq) continue;
+
+        // Check for user-ownership filters in the same query chain
+        const hasUserFilter =
+          /\.eq\s*\(\s*['"`](?:user_id|owner_id|created_by|author_id)['"`]/.test(expr) ||
+          /auth\.uid\s*\(\s*\)/.test(expr) ||
+          /user\.id/.test(expr) ||
+          /userId/.test(expr);
+
+        if (hasUserFilter) continue; // Safe
+
+        // Find containing function
+        const fileSymbols = ir.symbols[binding.file];
+        let containingFn: FunctionSymbol | null = null;
+        if (fileSymbols) {
+          containingFn = fileSymbols.functions.find(
+            (fn) => binding.line >= fn.startLine && binding.line <= fn.endLine
+          ) || null;
+        }
+
+        let confidence: 'low' | 'medium' | 'high' = 'medium';
+        let explanation = '';
+
+        if (containingFn) {
+          // Check if containing function has user/auth parameters or calls auth
+          const hasUserParam = /user|auth|uid|session|req|context/i.test(containingFn.name) ||
+                               containingFn.calls.some(c => /auth/i.test(c));
+          
+          if (hasUserParam) {
+            // Function receives or uses user context, so it might verify ownership internally
+            confidence = 'low';
+            explanation = `Function "${containingFn.name}" appears to accept/use user context, but the query itself does not enforce user_id filtering.`;
+          } else {
+            confidence = 'medium';
+            explanation = `Function "${containingFn.name}" queries table but does not accept/use any obvious user or auth context.`;
+          }
+        } else {
+          // Global scope or outside functions
+          confidence = 'high';
+          explanation = `Database query is executed outside of any function scope without user ownership filtering.`;
+        }
+
+        // Extract table name
+        const tableMatch = /\.from\s*\(\s*['"`](\w+)['"`]\s*\)/.exec(expr);
+        const tableName = tableMatch?.[1] ?? 'unknown';
+
+        findings.push({
+          id: nextFindingId('SEC_POSSIBLE_IDOR_001'),
+          ruleId: 'SEC_POSSIBLE_IDOR_001',
+          ruleName: 'Possible Insecure Direct Object Reference (IDOR)',
+          category: 'security',
+          severity: 'medium',
+          confidence,
+          file: join(context.projectRoot, binding.file),
+          line: binding.line,
+          column: binding.column,
+          message: `Query on table "${tableName}" filters by ID but may not verify resource ownership`,
+          userActionableMessage:
+            `⚠️ POSSIBLE IDOR DETECTED (Confidence: ${confidence.toUpperCase()}): ` +
+            `${explanation} ` +
+            `This query on table "${tableName}" filters by an ID, but does not verify that the requesting user owns the resource. ` +
+            `Ensure that either RLS (Row Level Security) policies are enabled on the database, or ` +
+            `ownership is verified in code before executing this query.`,
+          autoFixable: false,
+          evidence: expr.slice(0, 120) + (expr.length > 120 ? '...' : ''),
+        });
+      }
+      return findings;
+    }
+
+    // Fallback to regex-based heuristic if IR is not available (for old tests/compatibility)
+    const fromPattern = /\.from\s*\(\s*['"`](\w+)['"`]\s*\)/g;
     for (const file of targetFiles) {
       const content = await context.readFile(file);
       if (!content) continue;
 
-      // Split into logical statement blocks (rough: split on lines that
-      // start a new statement/expression)
       const lines = content.split('\n');
-
-      // Accumulate multi-line chains
       let chainBuffer = '';
       let chainStartLine = 0;
 
@@ -506,25 +585,20 @@ const possibleIDOR: Rule = {
         const line = lines[i];
         const trimmed = line.trim();
 
-        // Skip comments
         if (trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
 
-        // Detect chain start (a line containing .from())
         if (/\.from\s*\(/.test(line)) {
           chainBuffer = line;
           chainStartLine = i;
         } else if (chainBuffer) {
-          // Continue accumulating if this looks like a chained call
           if (trimmed.startsWith('.') || trimmed.startsWith('await') || chainBuffer.endsWith('.')) {
             chainBuffer += ' ' + line;
           } else {
-            // Chain ended — analyze it
             analyzeChain(chainBuffer, chainStartLine, file, findings, context);
             chainBuffer = '';
           }
         }
       }
-      // Don't forget the last chain
       if (chainBuffer) {
         analyzeChain(chainBuffer, chainStartLine, file, findings, context);
       }

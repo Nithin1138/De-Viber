@@ -16,6 +16,7 @@ import { runRules } from '../rules/engine.js';
 import { lovableRules } from '../rules/lovable/rules.js';
 import { boltRules } from '../rules/bolt/rules.js';
 import { securityRules } from '../rules/universal/security.rules.js';
+import { buildProjectIR } from '../ir/parser.js';
 
 const FIXTURES_ROOT = resolve(import.meta.dirname, '../../test-fixtures');
 
@@ -404,6 +405,23 @@ describe('Security Rules', () => {
         (f) => f.ruleId === 'SEC_POSSIBLE_IDOR_001'
       );
       expect(idorFindings).toHaveLength(0);
+    });
+
+    it('fires on lovable-idor-pattern with AST-based IR (precision check)', async () => {
+      const baseContext = await buildContext('lovable-idor-pattern');
+      const ir = await buildProjectIR(baseContext.projectRoot, baseContext.files, baseContext.readFile);
+      const context = { ...baseContext, ir };
+      const { findings } = await runRules(securityRules, context);
+
+      const idorFindings = findings.filter(
+        (f) => f.ruleId === 'SEC_POSSIBLE_IDOR_001'
+      );
+      expect(idorFindings.length).toBe(2);
+
+      // Verify that the findings have medium confidence because functions getPostById and deletePost lack user context
+      expect(idorFindings.every(f => f.confidence === 'medium')).toBe(true);
+      expect(idorFindings.some(f => f.message.includes('posts') && f.line === 5)).toBe(true);
+      expect(idorFindings.some(f => f.message.includes('posts') && f.line === 17)).toBe(true);
     });
 
     it('does NOT fire on lovable-secure (no ID-only queries)', async () => {

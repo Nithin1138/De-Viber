@@ -68,6 +68,7 @@ deviber analyse <path> --offline         # Skip npm registry checks
 deviber analyse <path> --platform lovable # Force platform ruleset
 deviber analyse <path> --format json      # Output as structured JSON
 deviber analyse <path> --output report.md # Save results to a file
+deviber analyse <path> --share            # Share score and generate a public dashboard URL
 
 # Automatically refactor auto-fixable findings and verify safety
 deviber transform <path>
@@ -83,6 +84,24 @@ deviber verify <path> --cleanup           # Clean up leftover test containers
 deviber deploy <path>
 deviber deploy <path> --platform vercel   # Pre-select target hosting platform
 ```
+
+---
+
+## Portability Score Sharing & Privacy Guarantees
+
+De-Viber CLI values your absolute privacy. By default, **no code, file paths, or findings detail ever leave your local machine**.
+
+If you wish to share your portability grade or view it on a dashboard web page, you can pass the `--share` option to the `analyse` command.
+
+### Data Consent & Transparency
+1. The CLI will **never** submit data automatically. Passing `--share` will display the exact JSON payload to be transmitted and prompt you for explicit consent:
+   `Do you consent to uploading these score metrics to the public sharing dashboard? (y/N): `
+2. The payload contains **only** non-sensitive summary details:
+   - A SHA-256 hash of the project name (never the original name).
+   - The detected source platform (e.g. `lovable` or `bolt`).
+   - The overall scores and letter grade.
+   - A summary list of factor names and counts (e.g., `Hardcoded Secrets` and `1`).
+3. Under no circumstances are file names, code contents, or details of findings uploaded.
 
 ---
 

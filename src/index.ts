@@ -19,6 +19,7 @@ import fg from 'fast-glob';
 import { readFile, writeFile, access, rm } from 'node:fs/promises';
 import { resolve, basename, join } from 'node:path';
 import { createRequire } from 'node:module';
+import crypto from 'node:crypto';
 
 import type {
   ScanOptions,
@@ -28,6 +29,7 @@ import type {
 } from './types.js';
 import { detectPlatform } from './detectors/platformDetector.js';
 import { runRules } from './rules/engine.js';
+import { buildProjectIR } from './ir/parser.js';
 import { askQuestion } from './utils/prompt.js';
 import { lovableRules } from './rules/lovable/rules.js';
 import { boltRules } from './rules/bolt/rules.js';
@@ -39,6 +41,7 @@ import {
   renderMarkdown,
   renderJson,
 } from './report/generate.js';
+import { renderDiligence } from './report/diligence.js';
 import { applyCodemods } from './transformer/codemodEngine.js';
 import { saveSnapshot, loadSnapshot, printDiff } from './report/snapshot.js';
 import { simpleGit } from 'simple-git';
@@ -122,6 +125,7 @@ async function analyse(targetPath: string, options: {
   platform?: string;
   output?: string;
   format: string;
+  share?: boolean;
 }): Promise<void> {
   const projectRoot = resolve(targetPath);
 
@@ -242,6 +246,9 @@ async function analyse(targetPath: string, options: {
   }
 
   // Build rule context
+  console.log(chalk.cyan('🏗  Building project intermediate representation...'));
+  const ir = await buildProjectIR(projectRoot, files, (relativePath: string) => safeReadFile(join(projectRoot, relativePath)));
+
   const context: RuleContext = {
     projectRoot,
     files,
@@ -249,6 +256,7 @@ async function analyse(targetPath: string, options: {
     packageJson,
     offline: options.offline,
     detectedPlatform: platformDetection,
+    ir,
   };
 
   const allRules = [
@@ -295,9 +303,11 @@ async function analyse(targetPath: string, options: {
   });
 
   // Render output
-  const format = options.format as 'markdown' | 'json';
+  const format = options.format as 'markdown' | 'json' | 'diligence';
   const output =
-    format === 'json' ? renderJson(report) : renderMarkdown(report);
+    format === 'json' ? renderJson(report) :
+    format === 'diligence' ? renderDiligence(report) :
+    renderMarkdown(report);
 
   if (options.output) {
     try {
@@ -351,6 +361,63 @@ async function analyse(targetPath: string, options: {
       report.portabilityScore.score,
       report.securityScore.score,
     );
+  }
+
+  // Share score if requested
+  if (options.share) {
+    const projectNameHash = crypto.createHash('sha256').update(projectName).digest('hex');
+    const factorsPayload = [
+      ...report.portabilityScore.factors.map(f => ({
+        name: f.name,
+        weight: f.penalty,
+        detectedCount: f.count,
+        severity: f.severity,
+      })),
+      ...report.securityScore.factors.map(f => ({
+        name: f.name,
+        weight: f.penalty,
+        detectedCount: f.count,
+        severity: f.severity,
+      }))
+    ];
+
+    const sharePayload = {
+      projectNameHash,
+      platform: platformDetection.platform,
+      overallScore: report.portabilityScore.score,
+      lockInSeverity: report.portabilityScore.factors.some(f => f.severity === 'critical' || f.severity === 'high') ? 'high' : 'medium',
+      codeQualityScore: report.securityScore.score,
+      grade: report.portabilityScore.grade,
+      factors: factorsPayload,
+    };
+
+    console.log(chalk.cyan('\n📤 Portability score metadata to be shared:'));
+    console.log(JSON.stringify(sharePayload, null, 2));
+    console.log(chalk.yellow('\nNO source code, file paths, or individual findings details will be shared.'));
+
+    const consent = await askQuestion('Do you consent to uploading these score metrics to the public sharing dashboard? (y/N): ');
+    if (consent.trim().toLowerCase() === 'y') {
+      console.log(chalk.cyan('Uploading score...'));
+      try {
+        const serverUrl = process.env.DEVIBER_SERVER_URL || 'http://localhost:3000';
+        const res = await fetch(`${serverUrl}/api/scans`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sharePayload),
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error ${res.status}`);
+        }
+
+        const data = (await res.json()) as { id: string };
+        console.log(chalk.green(`\n🚀 Score shared successfully! Public link: ${serverUrl}/shares/${data.id}\n`));
+      } catch (err: any) {
+        console.error(chalk.red(`\n✖ Failed to upload score: ${err.message}\n`));
+      }
+    } else {
+      console.log(chalk.yellow('\nSharing cancelled. No data was uploaded.\n'));
+    }
   }
 
   console.log('');
@@ -547,6 +614,9 @@ async function transform(targetPath: string, options: {
 
   // 3. Detect platform and run scan rules
   const platformDetection = await detectPlatform(projectRoot, files);
+  console.log(chalk.cyan('🏗  Building project intermediate representation...'));
+  const ir = await buildProjectIR(projectRoot, files, (relativePath: string) => safeReadFile(join(projectRoot, relativePath)));
+
   const context: RuleContext = {
     projectRoot,
     files,
@@ -554,6 +624,7 @@ async function transform(targetPath: string, options: {
     packageJson,
     offline: true, // run transform completely offline
     detectedPlatform: platformDetection,
+    ir,
   };
 
   const allRules = [
@@ -747,6 +818,7 @@ program
     'Output format: markdown or json',
     'markdown'
   )
+  .option('--share', 'Share your portability score and generate a public URL', false)
   .action(async (targetPath: string, opts: Record<string, unknown>) => {
     try {
       await analyse(targetPath, {
@@ -754,6 +826,7 @@ program
         platform: opts.platform as string | undefined,
         output: opts.output as string | undefined,
         format: (opts.format as string) || 'markdown',
+        share: opts.share as boolean,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);

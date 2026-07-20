@@ -1,3 +1,5 @@
+import type { ProjectIR } from './ir/types.js';
+
 /**
  * Core type definitions for deviber-cli.
  *
@@ -139,6 +141,9 @@ export interface RuleContext {
 
   /** Detected platform (rules can use this for cross-referencing). */
   detectedPlatform: PlatformDetection;
+
+  /** Universal Intermediate Representation (IR) of the project. */
+  ir?: ProjectIR;
 }
 
 /** Parsed package.json fields we care about. */
@@ -289,10 +294,13 @@ export interface ScanOptions {
   platformOverride?: Platform;
 
   /** Output format for the report. */
-  format: 'markdown' | 'json';
+  format: 'markdown' | 'json' | 'diligence';
 
   /** Output file path (stdout if not specified). */
   outputPath?: string;
+
+  /** Share the score to the cloud backend. */
+  share?: boolean;
 }
 
 // ─── Verification ───────────────────────────────────────────────────────────
