@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added packaging test script (`scripts/test-packaging.sh`) and integrated `npm run test:packaging` to dynamically test NPM packaging correctness in an isolated shell.
 - **Security Responsible Disclosure Policy**:
   - Added `SECURITY.md` detailing responsible disclosure protocols and limitations of scan heuristics.
+- **Bolt Adapter Pack (Priority 5)**:
+  - Added Bolt-specific detection rules: `BOLT_CONFIG_001` (validated config/directory checks), `BOLT_SCOPED_DEP_001` (unvalidated Bolt-scoped package dependency checking), and `BOLT_RUNTIME_ASSUMPTION_001` (unvalidated StackBlitz WebContainer runtime assumption checks).
+  - Extended platform detector to recognize Bolt/StackBlitz-specific packages (`@stackblitz/`, `@bolt/`, and `bolt-tagger`).
+
 
 ### Fixed
 - **Peer Dependency resolution in Docker**: Added `--legacy-peer-deps` to npm install phase in Docker verifier to prevent ERESOLVE compilation crashes on React 19 apps with React 18 peer requirements. Tested and confirmed on real-world project `brand-bloom-qr`.
