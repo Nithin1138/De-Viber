@@ -1012,7 +1012,7 @@ app.get('/', (req, res) => {
         }
         totalHours += hours;
         const bt = '\`';
-        roadmapRows += \`| \${idx + 1} | \${bt}\${f.category}\${bt} | **\${f.severity.toUpperCase()}** | \${bt}\${hours}h\${bt} | Found in \${bt}\${f.file.split('/').pop()}\${bt}: \${f.message} | \${action} |\\n\`;
+        roadmapRows += "| " + (idx + 1) + " | " + bt + f.category + bt + " | **" + f.severity.toUpperCase() + "** | " + bt + hours + "h" + bt + " | Found in " + bt + f.file.split('/').pop() + bt + ": " + f.message + " | " + action + " |\n";
       });
 
       const pScore = data.portabilityScore.score;
@@ -1026,42 +1026,43 @@ app.get('/', (req, res) => {
 
       let narrative = '';
       if (pScore >= 80 && sScore >= 80) {
-        narrative = \`The codebase for "\${data.projectName}" displays a strong posture for independent hosting and production readiness, achieving a Portability grade of \${pGrade} (\${pScore}/100) and a Security grade of \${sGrade} (\${sScore}/100).\`;
+        narrative = "The codebase for \"" + data.projectName + "\" displays a strong posture for independent hosting and production readiness, achieving a Portability grade of " + pGrade + " (" + pScore + "/100) and a Security grade of " + sGrade + " (" + sScore + "/100).";
       } else {
-        narrative = \`The codebase for "\${data.projectName}" is moderately portable, with a Portability grade of \${pGrade} (\${pScore}/100) and a Security grade of \${sGrade} (\${sScore}/100). Review the Roadmap below for details.\`;
+        narrative = "The codebase for \"" + data.projectName + "\" is moderately portable, with a Portability grade of " + pGrade + " (" + pScore + "/100) and a Security grade of " + sGrade + " (" + sScore + "/100). Review the Roadmap below for details.";
       }
 
-      const markdown = \`# 🏢 B2B Due Diligence & Portability Report
-
-**Project Name:** \${bt}\${data.projectName}\${bt}
-**Date Generated:** \${new Date().toLocaleDateString()}
-**Source Platform:** \${bt}\${data.detectedPlatform}\${bt}
-
----
-
-## 📊 Executive Summary
-
-\${narrative}
-
-### ⏱️ Migration Estimations
-- **Estimated Effort:** \${bt}\${totalHours} Hours\${bt} (\${effortScale})
-- **Total Findings:** \${bt}\${data.findings.length}\${bt}
-
----
-
-## 🛡️ Risk & Posture Scorecard
-
-| Dimension | Score | Grade | Status |
-|---|---|---|---|
-| **Portability (Lock-in)** | \${bt}\${pScore}/100\${bt} | **\${pGrade}** | \${pScore >= 80 ? '✅ Ready' : '⚠️ Caution'} |
-| **Security (Readiness)** | \${bt}\${sScore}/100\${bt} | **\${sGrade}** | \${sScore >= 80 ? '✅ Ready' : '⚠️ Caution'} |
-
-## 🗺️ Remediation Roadmap
-
-| Step | Dimension | Severity | Estimated Effort | Description | Action Item |
-|---|---|---|---|---|---|
-\${roadmapRows}
-\`;
+      const markdown = [
+        "# 🏢 B2B Due Diligence & Portability Report",
+        "",
+        "**Project Name:** " + bt + data.projectName + bt,
+        "**Date Generated:** " + new Date().toLocaleDateString(),
+        "**Source Platform:** " + bt + data.detectedPlatform + bt,
+        "",
+        "---",
+        "",
+        "## 📊 Executive Summary",
+        "",
+        narrative,
+        "",
+        "### ⏱️ Migration Estimations",
+        "- **Estimated Effort:** " + bt + totalHours + " Hours" + bt + " (" + effortScale + ")",
+        "- **Total Findings:** " + bt + data.findings.length + bt,
+        "",
+        "---",
+        "",
+        "## 🛡️ Risk & Posture Scorecard",
+        "",
+        "| Dimension | Score | Grade | Status |",
+        "|---|---|---|---|",
+        "| **Portability (Lock-in)** | " + bt + pScore + "/100" + bt + " | **" + pGrade + "** | " + (pScore >= 80 ? '✅ Ready' : '⚠️ Caution') + " |",
+        "| **Security (Readiness)** | " + bt + sScore + "/100" + bt + " | **" + sGrade + "** | " + (sScore >= 80 ? '✅ Ready' : '⚠️ Caution') + " |",
+        "",
+        "## 🗺️ Remediation Roadmap",
+        "",
+        "| Step | Dimension | Severity | Estimated Effort | Description | Action Item |",
+        "|---|---|---|---|---|---|",
+        roadmapRows
+      ].join('\n');
 
       const blob = new Blob([markdown], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
