@@ -431,11 +431,11 @@ app.get('/', (req, res) => {
 
     <!-- Scan Setup Card -->
     <div class="card" id="setup-card">
-      <div class="dropzone" id="dropzone-area">
+      <div class="dropzone" id="dropzone-area" onclick="document.getElementById('project-upload').click()">
         <div class="dropzone-icon">📂</div>
         <div class="dropzone-text">Select Exported Project Directory</div>
         <div class="dropzone-hint">Folder analysis occurs entirely in your browser memory. No code is uploaded.</div>
-        <button class="btn-primary" onclick="document.getElementById('project-upload').click()">Browse Directory</button>
+        <button class="btn-primary">Browse Directory</button>
         <input type="file" id="project-upload" webkitdirectory directory multiple style="display: none;" />
       </div>
 
