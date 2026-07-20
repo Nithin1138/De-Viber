@@ -103,7 +103,7 @@ const lovableConfig: Rule = {
   severity: 'medium',
   confidence: 'high',
   platform: 'lovable',
-  autoFixable: false,
+  autoFixable: true,
   requiresNetwork: false,
   detect(context: RuleContext): Finding[] {
     const findings: Finding[] = [];
@@ -130,7 +130,7 @@ const lovableConfig: Rule = {
             `Standard hosting platforms (Vercel, Railway, Netlify) won't recognize it. ` +
             `You may need to migrate any relevant settings to the equivalent config ` +
             `for your target platform (e.g., vercel.json, railway.json).`,
-          autoFixable: false,
+          autoFixable: true,
           evidence: file,
         });
       }
@@ -155,7 +155,7 @@ const lovableConfig: Rule = {
           'This directory is used by Lovable\'s build system and won\'t be needed ' +
           'when you deploy elsewhere. You can safely remove it after confirming ' +
           'no critical configuration has been placed there.',
-        autoFixable: false,
+        autoFixable: true,
         evidence: '.lovable/',
       });
     }

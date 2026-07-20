@@ -623,6 +623,7 @@ async function transform(targetPath: string, options: {
     groupedByFile.get(s.file)!.push(s);
   }
 
+  let hasSecretsExtracted = false;
   for (const [file, items] of groupedByFile.entries()) {
     const relativeFile = file.startsWith(projectRoot)
       ? file.slice(projectRoot.length + 1)
@@ -630,17 +631,22 @@ async function transform(targetPath: string, options: {
     console.log(`\n📄 ${chalk.bold(relativeFile)}:`);
     for (const item of items) {
       if (item.action === 'extracted') {
+        hasSecretsExtracted = true;
         console.log(
           `  • Extracted hardcoded secret variable "${chalk.yellow(item.variableName)}" into ` +
           `environment variable "${chalk.green(item.envVarName)}".`
         );
+      } else if (item.action === 'deleted') {
+        console.log(`  • Safely removed platform-specific configuration directory/file.`);
       }
     }
   }
 
-  console.log(`\n🔒 Secrets have been safely appended to:`);
-  console.log(`  • ${chalk.bold('.env.local')} (local secrets, git-ignored)`);
-  console.log(`  • ${chalk.bold('.env.example')} (placeholder template)`);
+  if (hasSecretsExtracted) {
+    console.log(`\n🔒 Secrets have been safely appended to:`);
+    console.log(`  • ${chalk.bold('.env.local')} (local secrets, git-ignored)`);
+    console.log(`  • ${chalk.bold('.env.example')} (placeholder template)`);
+  }
   console.log(chalk.dim('─'.repeat(60)));
   console.log(chalk.cyan(`\nOriginal code is saved on backup branch: ${backupBranch}\n`));
   await saveVerificationStatus(projectRoot);

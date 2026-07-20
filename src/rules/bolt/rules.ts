@@ -39,7 +39,7 @@ const boltConfig: Rule = {
   severity: 'medium',
   confidence: 'high',
   platform: 'bolt',
-  autoFixable: false,
+  autoFixable: true,
   requiresNetwork: false,
   detect(context: RuleContext): Finding[] {
     const findings: Finding[] = [];
@@ -65,7 +65,7 @@ const boltConfig: Rule = {
             `The file "${file}" is a Bolt-specific configuration file. ` +
             `Standard hosting environments won't recognize it. You can safely remove it ` +
             `after migrating any custom build/preview configurations to your target platform.`,
-          autoFixable: false,
+          autoFixable: true,
           evidence: file,
         });
       }
@@ -89,7 +89,7 @@ const boltConfig: Rule = {
           'Your project contains a ".bolt/" directory with Bolt-specific files. ' +
           'This directory is used by Bolt\'s internal environment and is not needed ' +
           'when deployed elsewhere. You can safely remove it.',
-        autoFixable: false,
+        autoFixable: true,
         evidence: '.bolt/',
       });
     }
