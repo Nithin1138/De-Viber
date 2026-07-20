@@ -48,6 +48,7 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "deviber-cli": "^0.2.0",
     "dockerode": "^5.0.1",
     "fast-glob": "^3.3.2",
     "simple-git": "^3.36.0",

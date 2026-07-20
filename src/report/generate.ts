@@ -373,6 +373,8 @@ export function renderMarkdown(report: PortabilityReport): string {
   lines.push('verify critical findings manually before making changes. This tool is provided ');
   lines.push('"as-is" with no warranty — see the LICENSE for details.*');
   lines.push('');
+  lines.push('*Found a bug or false positive? Report it at: https://github.com/Nithin1138/De-Viber/issues*');
+  lines.push('');
 
   return lines.join('\n');
 }
