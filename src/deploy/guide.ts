@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import chalk from 'chalk';
 import readline from 'node:readline';
 import { simpleGit } from 'simple-git';
-import { exec } from 'node:child_process';
+import { exec, execSync } from 'node:child_process';
 import http from 'node:http';
 import https from 'node:https';
 import fg from 'fast-glob';
@@ -254,10 +254,15 @@ export async function runDeploy(projectRoot: string, options: DeployOptions = {}
     if (vercelCli) {
       console.log(chalk.green('✅ Local Vercel CLI detected.'));
       if (options.interactive !== false) {
-        const confirmVercel = await askQuestion('Would you like to invoke "vercel deploy" now? (y/N): ');
+        const confirmVercel = await askQuestion('Would you like to invoke "vercel" now? (y/N): ');
         if (confirmVercel.toLowerCase() === 'y' || confirmVercel.toLowerCase() === 'yes') {
           console.log(chalk.cyan('\nRunning "vercel"...'));
-          console.log(chalk.green('✅ Triggered vercel command.'));
+          try {
+            execSync('vercel', { cwd: projectRoot, stdio: 'inherit' });
+            console.log(chalk.green('✅ Vercel command completed.'));
+          } catch (err) {
+            console.error(chalk.red('❌ Vercel deployment failed.'));
+          }
         }
       }
     } else {
@@ -275,7 +280,12 @@ export async function runDeploy(projectRoot: string, options: DeployOptions = {}
         const confirmRailway = await askQuestion('Would you like to invoke "railway up" now? (y/N): ');
         if (confirmRailway.toLowerCase() === 'y' || confirmRailway.toLowerCase() === 'yes') {
           console.log(chalk.cyan('\nRunning "railway up"...'));
-          console.log(chalk.green('✅ Triggered railway up command.'));
+          try {
+            execSync('railway up', { cwd: projectRoot, stdio: 'inherit' });
+            console.log(chalk.green('✅ Railway up command completed.'));
+          } catch (err) {
+            console.error(chalk.red('❌ Railway deployment failed.'));
+          }
         }
       }
     } else {
