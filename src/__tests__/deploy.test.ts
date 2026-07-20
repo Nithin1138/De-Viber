@@ -11,7 +11,7 @@ vi.mock('simple-git', () => {
     simpleGit: () => ({
       checkIsRepo: () => Promise.resolve(true),
       revparse: () => Promise.resolve('new-hash'),
-      status: () => Promise.resolve({ isClean: () => true }),
+      status: () => Promise.resolve({ isClean: () => true, files: [] }),
     }),
   };
 });

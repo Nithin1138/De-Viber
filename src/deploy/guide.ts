@@ -64,7 +64,7 @@ export async function saveVerificationStatus(projectRoot: string): Promise<void>
     if (await git.checkIsRepo()) {
       commitHash = await git.revparse(['HEAD']);
       const status = await git.status();
-      isClean = status.isClean();
+      isClean = !status.files.some(f => !f.path.startsWith('.deviber/'));
     }
   } catch (e) {
     // Not a git repo
@@ -92,7 +92,8 @@ export async function checkVerificationStatus(projectRoot: string): Promise<{ ve
         return { verified: true, stale: true, reason: 'Git commit has changed since verification. Please re-run "deviber verify".' };
       }
       const status = await git.status();
-      if (!status.isClean() && data.isClean) {
+      const currentClean = !status.files.some(f => !f.path.startsWith('.deviber/'));
+      if (!currentClean && data.isClean) {
         return { verified: true, stale: true, reason: 'Git working directory has uncommitted changes since verification.' };
       }
     }
