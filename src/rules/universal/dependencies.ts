@@ -25,6 +25,10 @@
 
 import type { Rule, RuleContext, Finding } from '../../types.js';
 import { join } from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 
 let findingCounter = 0;
 function nextFindingId(ruleId: string): string {
@@ -209,5 +213,44 @@ const hallucinatedDependencies: Rule = {
   },
 };
 
+const peerDependencyConflict: Rule = {
+  id: 'DEP_PEER_CONFLICT_001',
+  name: 'Peer Dependency Conflict (ERESOLVE)',
+  category: 'portability',
+  severity: 'high',
+  confidence: 'high',
+  platform: 'universal',
+  autoFixable: true,
+  requiresNetwork: false, // We check locally if possible, though npm install might reach out
+  detect: async function (context: RuleContext): Promise<Finding[]> {
+    if (context.offline) return [];
+
+    try {
+      await execAsync('npm install --dry-run --no-fund --no-audit', {
+        cwd: context.projectRoot,
+        timeout: 10000,
+      });
+      return [];
+    } catch (error: any) {
+      if (error.stdout?.includes('ERESOLVE') || error.stderr?.includes('ERESOLVE') || error.message?.includes('ERESOLVE')) {
+        return [{
+          id: nextFindingId('DEP_PEER_CONFLICT_001'),
+          ruleId: 'DEP_PEER_CONFLICT_001',
+          ruleName: 'Peer Dependency Conflict (ERESOLVE)',
+          category: 'portability',
+          severity: 'high',
+          confidence: 'high',
+          file: join(context.projectRoot, 'package.json'),
+          message: 'npm install fails due to peer dependency conflicts (ERESOLVE)',
+          userActionableMessage: 'Your project fails to build on strict environments like Vercel or Railway because of peer dependency conflicts (ERESOLVE). We can auto-fix this by creating an .npmrc file with legacy-peer-deps=true.',
+          autoFixable: true,
+          evidence: 'npm install --dry-run failed with ERESOLVE',
+        }];
+      }
+      return [];
+    }
+  },
+};
+
 /** Dependency-related rules. */
-export const dependencyRules: Rule[] = [hallucinatedDependencies];
+export const dependencyRules: Rule[] = [hallucinatedDependencies, peerDependencyConflict];

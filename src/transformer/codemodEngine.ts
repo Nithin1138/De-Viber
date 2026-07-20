@@ -1,7 +1,9 @@
 import { Project, SyntaxKind, StringLiteral, NoSubstitutionTemplateLiteral } from 'ts-morph';
 import { existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import type { Finding } from '../types.js';
+import { askQuestion } from '../utils/prompt.js';
+import chalk from 'chalk';
 
 export interface CodemodSummary {
   file: string;
@@ -74,13 +76,38 @@ export async function applyCodemods(
   for (const finding of configFindings) {
     const filePath = finding.file;
     if (filePath && existsSync(filePath)) {
-      rmSync(filePath, { recursive: true, force: true });
+      console.log(`\n${chalk.yellow('⚠️  Configuration Directory Deletion')}`);
+      console.log(`The configuration directory/file "${basename(filePath)}" is specific to the ${finding.ruleId === 'LOVABLE_CONFIG_001' ? 'Lovable' : 'Bolt'} platform and is not needed for standalone deployment.`);
+      const confirm = await askQuestion(`Delete this directory now? (y/N): `);
+      if (confirm.toLowerCase() === 'y') {
+        rmSync(filePath, { recursive: true, force: true });
+        summaries.push({
+          file: filePath,
+          variableName: '',
+          envVarName: '',
+          action: 'deleted',
+        });
+        console.log(chalk.green(`Deleted ${basename(filePath)}`));
+      } else {
+        console.log(chalk.gray(`Skipping deletion of ${basename(filePath)}`));
+      }
+    }
+  }
+
+  // Filter for peer dependency conflicts
+  const peerDepFindings = findings.filter(
+    (f) => f.ruleId === 'DEP_PEER_CONFLICT_001'
+  );
+  for (const _finding of peerDepFindings) {
+    const npmrcCreated = ensureNpmrc(projectRoot);
+    if (npmrcCreated) {
       summaries.push({
-        file: filePath,
+        file: npmrcCreated,
         variableName: '',
         envVarName: '',
-        action: 'deleted',
+        action: 'created',
       });
+      console.log(`  ✔ ${chalk.green('.npmrc')} configured with legacy-peer-deps=true`);
     }
   }
 

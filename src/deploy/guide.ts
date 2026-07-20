@@ -1,7 +1,7 @@
 import { join, basename } from 'node:path';
 import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import chalk from 'chalk';
-import readline from 'node:readline';
+import { askQuestion } from '../utils/prompt.js';
 import { simpleGit } from 'simple-git';
 import { exec, execSync } from 'node:child_process';
 import http from 'node:http';
@@ -21,19 +21,7 @@ export interface DeployOptions {
   confirmDataExport?: boolean;
 }
 
-export function askQuestion(query: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
 
-  return new Promise((resolve) => {
-    rl.question(query, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
 
 async function pathExists(path: string): Promise<boolean> {
   try {

@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.8] - 2026-07-20
+
+### Fixed
+- **Restored explicit confirmation discipline**: Restored explicit confirmation prompts for auto-commit, `.npmrc` generation, and config directory deletion. These previously ran without asking, which violated this project's core trust principle.
+  - **Transform auto-commit**: Now displays a `git diff --stat` and asks for confirmation before committing.
+  - **.npmrc generation**: Now tied to a new finding (`DEP_PEER_CONFLICT_001`) that detects actual peer-dependency conflicts instead of generating the file unconditionally.
+  - **Config directory deletion**: Now explicitly asks before deleting platform-specific config directories (like `.lovable/`).
+
 ## [0.3.7] - 2026-07-20
 
 ### Added
