@@ -38,7 +38,7 @@ import {
   renderMarkdown,
   renderJson,
 } from './report/generate.js';
-import { applyCodemods } from './transformer/codemodEngine.js';
+import { applyCodemods, ensureNpmrc } from './transformer/codemodEngine.js';
 import { simpleGit } from 'simple-git';
 import { saveVerificationStatus, runDeploy } from './deploy/guide.js';
 
@@ -540,26 +540,40 @@ async function transform(targetPath: string, options: {
   console.log(chalk.cyan('🔍 Scanning for auto-fixable findings...'));
   const { findings } = await runRules(allRules, context);
 
+  // Always ensure .npmrc has legacy-peer-deps=true — prevents cloud build failures
+  // on Vercel, Railway, etc. regardless of whether there are other findings to fix.
+  const npmrcCreated = ensureNpmrc(projectRoot);
+  if (npmrcCreated) {
+    console.log(chalk.dim(`  ✔ .npmrc configured with legacy-peer-deps=true`));
+  }
+
   const fixableFindings = findings.filter(f => f.autoFixable);
-  if (fixableFindings.length === 0) {
+  if (fixableFindings.length === 0 && !npmrcCreated) {
     console.log(chalk.green('\n✅ No auto-fixable findings found. Nothing to transform!'));
     return;
   }
 
-  console.log(chalk.cyan(`\n⚡ Applying codemods for ${fixableFindings.length} auto-fixable findings...`));
-  let summaries;
-  try {
-    summaries = await applyCodemods(fixableFindings, projectRoot, packageJson);
-  } catch (err: any) {
-    console.error(chalk.red(`\n✖ Failed to apply codemods: ${err.message}\n`));
-    // Rollback changes
-    console.log(chalk.yellow('🔄 Rolling back to backup branch...'));
-    await git.reset(['--hard', backupBranch]);
-    process.exit(1);
+  let summaries: import('./transformer/codemodEngine.js').CodemodSummary[] = [];
+  if (fixableFindings.length > 0) {
+    console.log(chalk.cyan(`\n⚡ Applying codemods for ${fixableFindings.length} auto-fixable findings...`));
+    try {
+      summaries = await applyCodemods(fixableFindings, projectRoot, packageJson);
+    } catch (err: any) {
+      console.error(chalk.red(`\n✖ Failed to apply codemods: ${err.message}\n`));
+      // Rollback changes
+      console.log(chalk.yellow('🔄 Rolling back to backup branch...'));
+      await git.reset(['--hard', backupBranch]);
+      process.exit(1);
+    }
+  }
+
+  // Include .npmrc creation in summaries so it appears in the final report
+  if (npmrcCreated) {
+    summaries.push({ file: npmrcCreated, variableName: '', envVarName: '', action: 'created' });
   }
 
   if (summaries.length === 0) {
-    console.log(chalk.green('\n✅ No changes were made by codemods.'));
+    console.log(chalk.green('\n✅ No changes were made.'));
     return;
   }
 

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2026-07-20
+
+### Fixed
+- **Always-run .npmrc step**: Moved `.npmrc` generation out of the auto-fixable findings path so it now runs on **every** `deviber transform` call, even when a project has no other auto-fixable issues (no secrets, no platform config dirs). This ensures every transformed project is deployment-ready without any manual configuration.
+
 ## [0.3.4] - 2026-07-20
 
 ### Fixed

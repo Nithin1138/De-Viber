@@ -35,14 +35,14 @@ function appendToEnvFile(filePath: string, varName: string, value: string): void
 /**
  * Apply ts-morph codemods for auto-fixable findings.
  */
-export async function applyCodemods(
-  findings: Finding[],
-  projectRoot: string,
-  packageJson: any
-): Promise<CodemodSummary[]> {
-  const summaries: CodemodSummary[] = [];
-
-  // Ensure .npmrc exists and has legacy-peer-deps=true to avoid remote registry build failures
+/**
+ * Always-run step: ensure .npmrc has legacy-peer-deps=true so that cloud
+ * deployment platforms (Vercel, Railway, etc.) can install dependencies
+ * without peer-dependency resolution failures.
+ *
+ * Returns the path if a change was made, otherwise null.
+ */
+export function ensureNpmrc(projectRoot: string): string | null {
   const npmrcPath = join(projectRoot, '.npmrc');
   let npmrcContent = '';
   if (existsSync(npmrcPath)) {
@@ -54,13 +54,17 @@ export async function applyCodemods(
     }
     npmrcContent += 'legacy-peer-deps=true\n';
     writeFileSync(npmrcPath, npmrcContent, 'utf-8');
-    summaries.push({
-      file: npmrcPath,
-      variableName: '',
-      envVarName: '',
-      action: 'created',
-    });
+    return npmrcPath;
   }
+  return null;
+}
+
+export async function applyCodemods(
+  findings: Finding[],
+  projectRoot: string,
+  packageJson: any
+): Promise<CodemodSummary[]> {
+  const summaries: CodemodSummary[] = [];
 
   // Filter for platform config deletion
   const configFindings = findings.filter(
@@ -85,7 +89,7 @@ export async function applyCodemods(
     (f) => f.ruleId === 'SEC_HARDCODED_SECRET_001' && f.file
   );
 
-  if (secretFindings.length === 0 && configFindings.length === 0 && summaries.length === 0) {
+  if (secretFindings.length === 0 && configFindings.length === 0) {
     return [];
   }
 
