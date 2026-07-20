@@ -10,6 +10,10 @@ import { pool, initDb } from './db.js';
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[Server] ${req.method} ${req.url}`, req.body || '');
+  next();
+});
 
 // In-memory fallback map if DB is offline
 const memoryDb = new Map<string, any>();
@@ -1007,8 +1011,8 @@ app.get('/', (req, res) => {
           else { hours = 0.5; action = 'Check client validation rules.'; }
         }
         totalHours += hours;
-
-        roadmapRows += \`| \${idx + 1} | \`\${f.category}\` | **\${f.severity.toUpperCase()}** | \`\${hours}h\` | Found in \`\${f.file.split('/').pop()}\`: \${f.message} | \${action} |\\n\`;
+        const bt = '\`';
+        roadmapRows += \`| \${idx + 1} | \${bt}\${f.category}\${bt} | **\${f.severity.toUpperCase()}** | \${bt}\${hours}h\${bt} | Found in \${bt}\${f.file.split('/').pop()}\${bt}: \${f.message} | \${action} |\\n\`;
       });
 
       const pScore = data.portabilityScore.score;
@@ -1029,9 +1033,9 @@ app.get('/', (req, res) => {
 
       const markdown = \`# 🏢 B2B Due Diligence & Portability Report
 
-**Project Name:** \\\`\${data.projectName}\\\`
+**Project Name:** \${bt}\${data.projectName}\${bt}
 **Date Generated:** \${new Date().toLocaleDateString()}
-**Source Platform:** \\\`\${data.detectedPlatform}\\\`
+**Source Platform:** \${bt}\${data.detectedPlatform}\${bt}
 
 ---
 
@@ -1040,8 +1044,8 @@ app.get('/', (req, res) => {
 \${narrative}
 
 ### ⏱️ Migration Estimations
-- **Estimated Effort:** \\\`\${totalHours} Hours\\\` (\${effortScale})
-- **Total Findings:** \\\`\${data.findings.length}\\\`
+- **Estimated Effort:** \${bt}\${totalHours} Hours\${bt} (\${effortScale})
+- **Total Findings:** \${bt}\${data.findings.length}\${bt}
 
 ---
 
@@ -1049,8 +1053,8 @@ app.get('/', (req, res) => {
 
 | Dimension | Score | Grade | Status |
 |---|---|---|---|
-| **Portability (Lock-in)** | \\\`\${pScore}/100\\\` | **\${pGrade}** | \${pScore >= 80 ? '✅ Ready' : '⚠️ Caution'} |
-| **Security (Readiness)** | \\\`\${sScore}/100\\\` | **\${sGrade}** | \${sScore >= 80 ? '✅ Ready' : '⚠️ Caution'} |
+| **Portability (Lock-in)** | \${bt}\${pScore}/100\${bt} | **\${pGrade}** | \${pScore >= 80 ? '✅ Ready' : '⚠️ Caution'} |
+| **Security (Readiness)** | \${bt}\${sScore}/100\${bt} | **\${sGrade}** | \${sScore >= 80 ? '✅ Ready' : '⚠️ Caution'} |
 
 ## 🗺️ Remediation Roadmap
 
