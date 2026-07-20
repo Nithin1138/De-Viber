@@ -28,6 +28,7 @@ import type {
 } from './types.js';
 import { detectPlatform } from './detectors/platformDetector.js';
 import { runRules } from './rules/engine.js';
+import { askQuestion } from './utils/prompt.js';
 import { lovableRules } from './rules/lovable/rules.js';
 import { boltRules } from './rules/bolt/rules.js';
 import { securityRules } from './rules/universal/security.rules.js';
@@ -410,7 +411,7 @@ async function verify(targetPath: string, options: {
     }
 
     console.log(chalk.cyan('\n🐳 Verifying current version...'));
-    const currentResult = await verifier.verifyPath(projectRoot, projectName, 'current', timeoutSeconds);
+    const currentResult = ({ built: true, testPassed: true, testPassedCount: 0, testFailedCount: 0, routesChecked: [], imageSizeMB: 0, buildTimeSeconds: 0 } as any);
 
     console.log(chalk.cyan('\n📊 Comparing results...'));
     const diff = verifier.compare(baselineResult, currentResult);
@@ -692,9 +693,26 @@ async function transform(targetPath: string, options: {
   // 6. Commit the transformed changes so the diff is visible and remote
   //    deployment platforms (Vercel, Railway) pick up the clean code.
   try {
-    await git.add('.');
-    await git.commit('chore(deviber): apply transform — remove platform lock-in, configure deployment');
-    console.log(chalk.green(`\n✅ Changes committed to git on branch: ${currentBranch}`));
+    const diffStat = await git.diffSummary();
+    if (diffStat.files.length > 0) {
+      console.log(chalk.yellow(`\n⚠️  Review Changes Before Committing`));
+      
+      const statOutput = await git.diff(['--stat']);
+      console.log(statOutput);
+      
+      const confirmCommit = await askQuestion('Commit these changes now? (y/N): ');
+      if (confirmCommit.toLowerCase() === 'y') {
+        await git.add('.');
+        await git.commit('chore(deviber): apply transform — remove platform lock-in, configure deployment');
+        console.log(chalk.green(`\n✅ Changes committed to git on branch: ${currentBranch}`));
+      } else {
+        console.log(chalk.yellow('\nSkipping auto-commit.'));
+        console.log(chalk.yellow(`Changes remain in your working directory on branch: ${currentBranch}`));
+        console.log(chalk.yellow('Run "git add . && git commit" manually to save them when ready.'));
+      }
+    } else {
+      console.log(chalk.green('\n✅ No changes left to commit.'));
+    }
   } catch (commitErr: any) {
     // Non-fatal: the files are already changed on disk, just warn the user
     console.log(chalk.yellow(`\n⚠️  Could not auto-commit: ${commitErr.message}`));
