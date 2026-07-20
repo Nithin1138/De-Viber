@@ -39,6 +39,7 @@ import {
   renderJson,
 } from './report/generate.js';
 import { applyCodemods, ensureNpmrc } from './transformer/codemodEngine.js';
+import { saveSnapshot, loadSnapshot, printDiff } from './report/snapshot.js';
 import { simpleGit } from 'simple-git';
 import { saveVerificationStatus, runDeploy } from './deploy/guide.js';
 
@@ -277,6 +278,9 @@ async function analyse(targetPath: string, options: {
     }
   }
 
+  // Load previous snapshot for diff comparison
+  const previousSnapshot = loadSnapshot(projectRoot);
+
   // Generate report
   console.log(chalk.cyan('\n📊 Generating report...'));
   const report = generateReport({
@@ -328,6 +332,26 @@ async function analyse(targetPath: string, options: {
       )
     );
   }
+  // Save snapshot for future diff comparisons
+  saveSnapshot(projectRoot, {
+    cliVersion: CLI_VERSION,
+    portabilityScore: report.portabilityScore,
+    securityScore: report.securityScore,
+    summary: report.summary,
+    findings: report.findings,
+  });
+
+  // Print diff vs previous scan (if one exists)
+  if (previousSnapshot) {
+    printDiff(
+      projectRoot,
+      previousSnapshot,
+      report.findings,
+      report.portabilityScore.score,
+      report.securityScore.score,
+    );
+  }
+
   console.log('');
 }
 

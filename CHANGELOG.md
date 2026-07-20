@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.3.7] - 2026-07-20
+
+### Added
+- **Scan diff / `--compare`**: Every `deviber analyse` run now saves a lightweight snapshot to `.deviber/last-report.json`. On subsequent runs, a "Changes since last scan" section is automatically printed showing: ✅ Fixed findings, 🆕 New findings, ⚠️ Still open, and score deltas. No extra flags needed.
+
 ## [0.3.6] - 2026-07-20
 
 ### Fixed
