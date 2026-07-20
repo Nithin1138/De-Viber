@@ -56,4 +56,12 @@ describe('De-Viber Server API', () => {
     expect(getData.overallScore).toBe(85);
     expect(getData.factors.length).toBe(1);
   });
+
+  it('serves the Web GUI scanner HTML at GET /', async () => {
+    const res = await fetch(`${serverUrl}/`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('DE-VIBER WEB SCANNER');
+    expect(html).toContain('webkitdirectory');
+  });
 });
