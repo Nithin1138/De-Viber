@@ -30,12 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
-- **Peer Dependency resolution in Docker**: Added `--legacy-peer-deps` to npm install phase in Docker verifier to prevent ERESOLVE compilation crashes on React 19 apps with React 18 peer requirements. Tested and confirmed on real-world project `brand-bloom-qr`.
+- **Peer Dependency resolution in Docker**: Added `--legacy-peer-deps` to npm install phase in Docker verifier to prevent ERESOLVE compilation crashes on React 19 apps with React 18 peer requirements. Tested and confirmed on a real Lovable project using React 19.
 - **Unit Test isolation**: Fixed config restoration and env cleanup during Vitest runs to prevent dirty directory issues.
 - **Transitive Security Vulnerabilities**: Upgraded development dependency Vitest/Vite to `v4.1.10` via force audit fix, resolving all 5 vulnerabilities (moderate/high/critical) in esbuild/vite dev chain.
 
 ### Tracked Issues / Pending Items
-- **Real-world validation gap (Priority 4)**: Completed Real-World Validation Round 2 against the second local Lovable project (`sticker-spark-ai`). Verified platform fingerprinting accuracy, adjusted `LOVABLE_SCOPED_DEP_001` and platform detector to recognize `lovable-tagger`, and added `LOVABLE_API_GATEWAY_001` to flag lock-in dependencies like Lovable AI Gateway (`ai.gateway.lovable.dev`). Checked scores and verified true negatives on Bolt project `testing`.
+- **Real-world validation gap (Priority 4)**: Completed Real-World Validation Round 2 against a second real Lovable project with AI edge function integrations. Verified platform fingerprinting accuracy, adjusted `LOVABLE_SCOPED_DEP_001` and platform detector to recognize `lovable-tagger`, and added `LOVABLE_API_GATEWAY_001` to flag lock-in dependencies like Lovable AI Gateway (`ai.gateway.lovable.dev`). Checked scores and verified true negatives on a clean Bolt project template.
 
 ## [0.1.0] - 2024-01-XX
 

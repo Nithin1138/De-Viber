@@ -1,12 +1,12 @@
 {
   "name": "deviber-cli",
-  "version": "0.1.0",
-  "description": "A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit) for vendor lock-in and security issues.",
+  "version": "0.2.0",
+  "description": "A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Replit planned) for vendor lock-in and security issues.",
   "type": "module",
   "bin": {
-    "deviber": "./dist/index.js"
+    "deviber": "dist/index.js"
   },
-  "main": "./dist/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -26,8 +26,16 @@
     "ai-code-audit",
     "lock-in"
   ],
-  "author": "",
+  "author": "Nithin <nithin@example.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nithin1138/De-Viber.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nithin1138/De-Viber/issues"
+  },
+  "homepage": "https://github.com/Nithin1138/De-Viber#readme",
   "engines": {
     "node": ">=18.0.0"
   },

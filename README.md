@@ -1,6 +1,6 @@
 # deviber-cli
 
-A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit) for **vendor lock-in** and **security issues**.
+A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Replit planned) for **vendor lock-in** and **security issues**.
 
 > [!WARNING]
 > **Disclaimer & Important Notice**
@@ -18,9 +18,20 @@ A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit) for 
 
 ## Quick Start & Installation
 
-You can build and run `deviber-cli` locally on your machine. *(Note: Publication to the public npm registry is pending. Once published, running `npx deviber-cli analyse ...` directly will be supported).*
+You can run `deviber-cli` directly via `npx` or install it globally:
 
-### Run locally (Clone & Build)
+```bash
+# Run a scan directly without installing
+npx deviber-cli analyse ./path-to-your-project
+
+# Install globally on your system
+npm install -g deviber-cli
+
+# Run scans anywhere
+deviber analyse ./path-to-your-project
+```
+
+### Run/Build locally from Source
 
 To run the CLI from source:
 
@@ -35,21 +46,6 @@ npm run build
 
 # 3. Scan your project folder using the local build
 node dist/index.js analyse ./path-to-your-project
-```
-
-### Install locally as a global tool
-
-If you want to pack the project into a tarball and install it globally as the `deviber` command:
-
-```bash
-# 1. Pack the package into a tarball (.tgz)
-npm pack
-
-# 2. Install the packed tarball globally
-npm install -g ./deviber-cli-0.1.0.tgz
-
-# 3. Run scans anywhere using the 'deviber' command
-deviber analyse ./path-to-your-project
 ```
 
 ---
@@ -148,3 +144,10 @@ npm run test:integration
 ## License
 
 MIT — see [LICENSE](./LICENSE)
+
+---
+
+## 🐞 Support & Feedback
+
+Found a bug or a false positive? Open an issue on our [GitHub Issue Tracker](https://github.com/Nithin1138/De-Viber/issues). We welcome community feedback to help improve the heuristic rules!
+
