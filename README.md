@@ -134,6 +134,77 @@ Here is a redacted example of what a printed Markdown report looks like:
   * Action: Move the Stripe API Key to an environment variable.
 ```
 
+## Example Walkthrough: End-to-End Audit & Migration
+
+Here is a worked example of running the entire pipeline against a real exported project:
+
+### 1. Analyse
+Scan your exported project folder to find portability blocks and security issues:
+```bash
+deviber analyse ./my-app
+```
+*Output:*
+```
+# 📋 Portability & Security Report
+Project: my-app
+Detected Platform: lovable (high confidence)
+
+Summary:
+- Portability Score: 92/100
+- Security Score: 78/100
+- Total Findings: 2
+
+Portability Findings:
+- LOVABLE_CLOUD_DATA_RISK_001: Supabase database URL points to a Lovable-managed cloud endpoint.
+
+Security Findings:
+- SEC_HARDCODED_SECRET_001: Found hardcoded Supabase service_role key in `src/lib/supabase.ts:5`.
+```
+
+### 2. Transform
+Automatically extract the hardcoded Supabase key into `.env.local` and substitute a reference in the source code:
+```bash
+deviber transform ./my-app
+```
+*Output:*
+```
+✨ TRANSFORM SUCCESS: All changes successfully verified!
+- Extracted hardcoded secret variable "SUPABASE_SERVICE_ROLE_KEY" into env variable "VITE_SUPABASE_SERVICE_ROLE_KEY"
+- Created backup branch: deviber-backup-1784537399215
+```
+
+### 3. Verify
+Spin up a local Docker container to compile, run tests, and check active server routes to ensure the transform didn't introduce regressions:
+```bash
+deviber verify ./my-app
+```
+*Output:*
+```
+🐳 Initializing Docker Verifier...
+🐳 Verifying current version...
+Successfully built Docker image
+🌐 Booting application container...
+  URL http://127.0.0.1:3000/ responded with 200
+✅ VERIFY PASS: No regressions detected!
+```
+
+### 4. Deploy
+Migrate to Vercel/Railway. The deploy walkthrough will gate on prior verification and Supabase data exports, prompt for env variables, and verify with a final live smoke test:
+```bash
+deviber deploy ./my-app
+```
+*Output:*
+```
+🔍 Scanning project for data export requirements...
+⚠️  DATA EXPORT REQUIREMENT DETECTED
+Have you successfully exported and backed up your database data? (y/N): y
+📦 Project Shape Detected: Frontend + Supabase Backend
+🚀 Preparing VERCEL Deployment...
+Would you like to invoke "vercel deploy" now? (y/N): y
+Pinging https://my-app.vercel.app...
+✅ SMOKE CHECK PASS: URL is active (HTTP 200)
+```
+
 ---
 
 ## Development
