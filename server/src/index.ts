@@ -1,6 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import crypto from 'node:crypto';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readFile, rm } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
 import { pool, initDb } from './db.js';
 
 const app = express();
@@ -427,12 +431,17 @@ app.get('/', (req, res) => {
 
     <!-- Scan Setup Card -->
     <div class="card" id="setup-card">
-      <div class="dropzone" onclick="document.getElementById('project-upload').click()">
+      <div class="dropzone" id="dropzone-area">
         <div class="dropzone-icon">📂</div>
         <div class="dropzone-text">Select Exported Project Directory</div>
         <div class="dropzone-hint">Folder analysis occurs entirely in your browser memory. No code is uploaded.</div>
-        <button class="btn-primary">Browse Directory</button>
+        <button class="btn-primary" onclick="document.getElementById('project-upload').click()">Browse Directory</button>
         <input type="file" id="project-upload" webkitdirectory directory multiple style="display: none;" />
+      </div>
+
+      <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; width: 100%;" id="local-path-container">
+        <input type="text" id="local-path-input" placeholder="Or enter local directory path (e.g. /Users/name/my-project)..." style="flex: 1; background: #04060a; border: 1px solid var(--card-border); border-radius: 12px; padding: 0.75rem 1rem; color: var(--text-main); font-family: Outfit, sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s;" onkeydown="if(event.key === 'Enter') document.getElementById('btn-scan-path').click()" />
+        <button class="btn-primary" id="btn-scan-path" style="border-radius: 12px; padding: 0.75rem 1.5rem;">Scan Local Path</button>
       </div>
 
       <div class="terminal-console" id="terminal" style="display: none;">
@@ -506,6 +515,10 @@ app.get('/', (req, res) => {
     const terminal = document.getElementById('terminal');
     const dashboardCard = document.getElementById('dashboard-card');
     const findingsList = document.getElementById('findings-list');
+    
+    const btnScanPath = document.getElementById('btn-scan-path');
+    const localPathInput = document.getElementById('local-path-input');
+    const localPathContainer = document.getElementById('local-path-container');
 
     let activeReport = null;
 
@@ -513,7 +526,8 @@ app.get('/', (req, res) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
 
-      setupCard.querySelector('.dropzone').style.display = 'none';
+      document.getElementById('dropzone-area').style.display = 'none';
+      localPathContainer.style.display = 'none';
       terminal.style.display = 'block';
       terminal.innerHTML = '';
 
@@ -521,6 +535,67 @@ app.get('/', (req, res) => {
         await startScan(files);
       } catch (err) {
         log('Fatal error during scan: ' + err.message, 'error');
+      }
+    });
+
+    btnScanPath.addEventListener('click', async () => {
+      const path = localPathInput.value.trim();
+      if (!path) {
+        alert('Please enter a valid directory path.');
+        return;
+      }
+
+      document.getElementById('dropzone-area').style.display = 'none';
+      localPathContainer.style.display = 'none';
+      terminal.style.display = 'block';
+      terminal.innerHTML = '';
+
+      log(\`Triggering local filesystem scan on path: "\${path}"\`);
+      log('Evaluating AST and rules on host server...');
+
+      try {
+        const res = await fetch('/api/scan-local-path', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || \`HTTP error \${res.status}\`);
+        }
+
+        const report = await res.json();
+        
+        activeReport = {
+          projectName: report.projectName,
+          detectedPlatform: report.platformDetection.platform,
+          timestamp: report.timestamp,
+          cliVersion: report.cliVersion,
+          portabilityScore: { 
+            score: report.portabilityScore.score, 
+            grade: report.portabilityScore.grade, 
+            findingsCount: report.findings.filter(f => f.category === 'portability').length 
+          },
+          securityScore: { 
+            score: report.securityScore.score, 
+            grade: report.securityScore.grade, 
+            findingsCount: report.findings.filter(f => f.category === 'security').length 
+          },
+          findings: report.findings
+        };
+
+        log('Local scan completed successfully!');
+        setTimeout(() => {
+          setupCard.style.display = 'none';
+          dashboardCard.style.display = 'block';
+          renderResults();
+        }, 800);
+      } catch (err) {
+        log('Fatal error during scan: ' + err.message, 'error');
+        setTimeout(() => {
+          resetScanner();
+        }, 3000);
       }
     });
 
@@ -902,9 +977,11 @@ app.get('/', (req, res) => {
       activeReport = null;
       dashboardCard.style.display = 'none';
       setupCard.style.display = 'block';
-      setupCard.querySelector('.dropzone').style.display = 'flex';
+      document.getElementById('dropzone-area').style.display = 'flex';
+      document.getElementById('local-path-container').style.display = 'flex';
       terminal.style.display = 'none';
       uploadInput.value = '';
+      document.getElementById('local-path-input').value = '';
     }
 
     function triggerReportDownload() {
@@ -1496,11 +1573,43 @@ app.post('/api/scans', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-initDb().then(() => {
-  app.listen(PORT, () => {
-    console.log(`De-Viber server running on port ${PORT}`);
-  });
+const execAsync = promisify(exec);
+
+app.post('/api/scan-local-path', async (req, res) => {
+  const { path } = req.body;
+  if (!path) {
+    return res.status(400).json({ error: 'Missing path parameter' });
+  }
+
+  const cliPath = resolve(process.cwd(), '../dist/index.js');
+  const tempFile = resolve(process.cwd(), `temp-report-${Date.now()}.json`);
+
+  try {
+    // Run the CLI tool to perform the full local scan
+    await execAsync(`node "${cliPath}" analyse "${path}" --format json --output "${tempFile}"`);
+    
+    // Read the generated JSON report
+    const reportContent = await readFile(tempFile, 'utf-8');
+    const report = JSON.parse(reportContent);
+    
+    // Clean up temp file
+    await rm(tempFile).catch(() => {});
+
+    res.json(report);
+  } catch (err: any) {
+    // Clean up temp file in case of error
+    await rm(tempFile).catch(() => {});
+    res.status(500).json({ error: err.stderr || err.message });
+  }
 });
+
+const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV !== 'test') {
+  initDb().then(() => {
+    app.listen(PORT, () => {
+      console.log(`De-Viber server running on port ${PORT}`);
+    });
+  });
+}
 
 export { app }; // For testing
