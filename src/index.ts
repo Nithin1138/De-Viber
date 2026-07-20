@@ -399,7 +399,7 @@ async function analyse(targetPath: string, options: {
     if (consent.trim().toLowerCase() === 'y') {
       console.log(chalk.cyan('Uploading score...'));
       try {
-        const serverUrl = process.env.DEVIBER_SERVER_URL || 'http://localhost:3000';
+        const serverUrl = process.env.DEVIBER_SERVER_URL || 'http://localhost:3001';
         const res = await fetch(`${serverUrl}/api/scans`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

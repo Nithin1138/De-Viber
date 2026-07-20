@@ -1608,7 +1608,7 @@ app.post('/api/scan-local-path', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 if (process.env.NODE_ENV !== 'test') {
   initDb().then(() => {
     app.listen(PORT, () => {
