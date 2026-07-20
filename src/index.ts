@@ -3,7 +3,7 @@
 /**
  * deviber-cli — Entry Point
  *
- * A local-first CLI that scans AI-app-builder exports (Lovable, Bolt, Replit)
+ * A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Replit planned)
  * for vendor lock-in and security issues.
  *
  * TRUST MODEL:
@@ -210,7 +210,7 @@ async function analyse(targetPath: string, options: {
       chalk.yellow(
         '  Could not identify a specific AI app-builder platform.\n' +
         '  Running universal security checks only.\n' +
-        '  If you know the platform, use --platform <lovable|bolt|replit>\n'
+        '  If you know the platform, use --platform <lovable|bolt>\n'
       )
     );
   } else {
@@ -654,7 +654,7 @@ program
   .name('deviber')
   .description(
     'Scan AI-app-builder exports for vendor lock-in and security issues.\n\n' +
-    'Supports projects exported from Lovable, Bolt, and Replit.\n' +
+    'Supports projects exported from Lovable and Bolt today, with Replit planned.\n' +
     'Operates entirely locally — never contacts platform servers.'
   )
   .version(CLI_VERSION);
@@ -667,7 +667,7 @@ program
   .option('--offline', 'Skip network-dependent checks (npm registry)', false)
   .option(
     '--platform <name>',
-    'Override auto-detected platform (lovable, bolt, replit)'
+    'Override auto-detected platform (lovable, bolt)'
   )
   .option(
     '--output <path>',

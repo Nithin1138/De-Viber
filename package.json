@@ -1,6 +1,6 @@
 {
   "name": "deviber-cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Replit planned) for vendor lock-in and security issues.",
   "type": "module",
   "bin": {
