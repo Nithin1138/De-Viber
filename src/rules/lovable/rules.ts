@@ -30,17 +30,17 @@ function nextFindingId(ruleId: string): string {
 /**
  * LOVABLE_SCOPED_DEP_001
  *
- * Detects @lovable.dev/* scoped packages in package.json.
+ * Detects @lovable.dev/* scoped packages or lovable-tagger in package.json.
  * These are build/dev dependencies that won't resolve outside
- * Lovable's ecosystem. The project will fail to install on a
- * standard machine unless these are replaced.
+ * Lovable's ecosystem or tag code for editing. The project will fail to install
+ * or carry unwanted editor overhead on a standard machine unless these are replaced.
  *
  * Validated: Yes — real Lovable exports include packages like
- * @lovable.dev/ui in devDependencies.
+ * @lovable.dev/ui in devDependencies, or lovable-tagger.
  */
 const lovableScopedDeps: Rule = {
   id: 'LOVABLE_SCOPED_DEP_001',
-  name: 'Lovable-Scoped Package Dependencies',
+  name: 'Lovable-Scoped/Specific Package Dependencies',
   category: 'portability',
   severity: 'high',
   confidence: 'high',
@@ -58,7 +58,7 @@ const lovableScopedDeps: Rule = {
     };
 
     for (const [depName, version] of Object.entries(allDeps)) {
-      if (depName.startsWith('@lovable.dev/')) {
+      if (depName.startsWith('@lovable.dev/') || depName === 'lovable-tagger') {
         const depType = pkg.dependencies?.[depName]
           ? 'dependency'
           : 'devDependency';
@@ -66,17 +66,17 @@ const lovableScopedDeps: Rule = {
         findings.push({
           id: nextFindingId('LOVABLE_SCOPED_DEP_001'),
           ruleId: 'LOVABLE_SCOPED_DEP_001',
-          ruleName: 'Lovable-Scoped Package Dependencies',
+          ruleName: 'Lovable-Scoped/Specific Package Dependencies',
           category: 'portability',
           severity: 'high',
           confidence: 'high',
           file: join(context.projectRoot, 'package.json'),
-          message: `Found Lovable-scoped package: ${depName}@${version} (${depType})`,
+          message: `Found Lovable-specific package: ${depName}@${version} (${depType})`,
           userActionableMessage:
-            `Your project depends on "${depName}" which is a package owned by Lovable. ` +
-            `This package won't be available if you move your project off Lovable's platform. ` +
+            `Your project depends on "${depName}" which is a package owned or used by Lovable. ` +
+            `This package won't be useful or available if you move your project off Lovable's platform. ` +
             `You'll need to find a standard replacement or remove it before deploying elsewhere. ` +
-            `Check if this package provides UI components, utilities, or build tools, and ` +
+            `Check if this package provides UI components, taggers, utilities, or build tools, and ` +
             `find an equivalent open-source alternative.`,
           autoFixable: false,
           evidence: `"${depName}": "${version}"`,
@@ -294,10 +294,76 @@ const lovableCloudDataRisk: Rule = {
   },
 };
 
+/**
+ * LOVABLE_API_GATEWAY_001
+ *
+ * Detects usage of Lovable AI Gateway (ai.gateway.lovable.dev) or LOVABLE_API_KEY env variables.
+ */
+const lovableApiGateway: Rule = {
+  id: 'LOVABLE_API_GATEWAY_001',
+  name: 'Lovable AI Gateway Dependency',
+  category: 'portability',
+  severity: 'high',
+  confidence: 'high',
+  platform: 'lovable',
+  autoFixable: false,
+  requiresNetwork: false,
+  detect: async function (context: RuleContext): Promise<Finding[]> {
+    const findings: Finding[] = [];
+    const targetFiles = context.files.filter(
+      (f) =>
+        f.endsWith('.ts') ||
+        f.endsWith('.tsx') ||
+        f.endsWith('.js') ||
+        f.endsWith('.jsx') ||
+        f.endsWith('.json') ||
+        f.endsWith('.env') ||
+        f.endsWith('.env.local') ||
+        f.endsWith('.toml')
+    );
+
+    const gatewayPattern = /ai\.gateway\.lovable\.dev|LOVABLE_API_KEY/gi;
+
+    for (const file of targetFiles) {
+      const content = await context.readFile(file);
+      if (!content) continue;
+
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        gatewayPattern.lastIndex = 0;
+        const match = gatewayPattern.exec(lines[i]);
+        if (match) {
+          findings.push({
+            id: nextFindingId('LOVABLE_API_GATEWAY_001'),
+            ruleId: 'LOVABLE_API_GATEWAY_001',
+            ruleName: 'Lovable AI Gateway Dependency',
+            category: 'portability',
+            severity: 'high',
+            confidence: 'high',
+            file: join(context.projectRoot, file),
+            line: i + 1,
+            message: `Found Lovable AI Gateway dependency or configuration: ${match[0]}`,
+            userActionableMessage:
+              'Your project makes calls to or configures the Lovable AI Gateway (ai.gateway.lovable.dev or LOVABLE_API_KEY). ' +
+              'If you host this project independently outside of Lovable, these API calls will fail once ' +
+              'your Lovable credentials or gateway permissions expire. You should modify the code to connect directly ' +
+              'to your own LLM providers (e.g. OpenAI, Anthropic, Gemini) and configure standard environment variables.',
+            autoFixable: false,
+            evidence: lines[i].trim(),
+          });
+        }
+      }
+    }
+
+    return findings;
+  },
+};
+
 /** All Lovable platform-specific rules. */
 export const lovableRules: Rule[] = [
   lovableScopedDeps,
   lovableConfig,
   lovableComments,
   lovableCloudDataRisk,
+  lovableApiGateway,
 ];

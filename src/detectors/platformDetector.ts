@@ -60,7 +60,7 @@ const lovableSignals: PlatformSignalCheck[] = [
   {
     platform: 'lovable',
     type: 'package.json dependency',
-    detail: '@lovable.dev/* scoped package found',
+    detail: '@lovable.dev/* or lovable-tagger package found',
     weight: 3,
     check: async (root) => {
       const pkg = await safeParseJson(join(root, 'package.json'));
@@ -69,7 +69,7 @@ const lovableSignals: PlatformSignalCheck[] = [
         ...(pkg.dependencies as Record<string, string> | undefined),
         ...(pkg.devDependencies as Record<string, string> | undefined),
       };
-      return Object.keys(allDeps).some((dep) => dep.startsWith('@lovable.dev/'));
+      return Object.keys(allDeps).some((dep) => dep.startsWith('@lovable.dev/') || dep === 'lovable-tagger');
     },
   },
   {

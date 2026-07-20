@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Transitive Security Vulnerabilities**: Upgraded development dependency Vitest/Vite to `v4.1.10` via force audit fix, resolving all 5 vulnerabilities (moderate/high/critical) in esbuild/vite dev chain.
 
 ### Tracked Issues / Pending Items
-- **Real-world validation gap (Priority 4)**: Real-world validation has been confirmed on 1 real-world project (`brand-bloom-qr`), but scanning and calibrating against 2-3 additional real-world exports remains blocked until these exports are provided by the user.
+- **Real-world validation gap (Priority 4)**: Completed Real-World Validation Round 2 against the second local Lovable project (`sticker-spark-ai`). Verified platform fingerprinting accuracy, adjusted `LOVABLE_SCOPED_DEP_001` and platform detector to recognize `lovable-tagger`, and added `LOVABLE_API_GATEWAY_001` to flag lock-in dependencies like Lovable AI Gateway (`ai.gateway.lovable.dev`). Checked scores and verified true negatives on Bolt project `testing`.
 
 ## [0.1.0] - 2024-01-XX
 
