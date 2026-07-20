@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added Bolt-specific detection rules: `BOLT_CONFIG_001` (validated config/directory checks).
   - Retired `BOLT_SCOPED_DEP_001` (proprietary build dependencies) and `BOLT_RUNTIME_ASSUMPTION_001` (WebContainer runtime assumptions) after manual inspection of real Bolt exports confirmed they do not apply to exported projects.
   - Extended platform detector to recognize Bolt/StackBlitz-specific packages (`@stackblitz/`, `@bolt/`, and `bolt-tagger`).
+- **Independent Deploy Phase (Priority 5)**:
+  - Added `deploy` command to close the 4-phase audit pipeline (Analyse → Transform → Verify → Deploy).
+  - Enforces prior successful verification checks, prompts for env variables from `.env.example`, provides manual/automated platform-specific deployment guides, and runs live smoke testing.
+
 
 
 ### Fixed

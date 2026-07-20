@@ -40,6 +40,7 @@ import {
 } from './report/generate.js';
 import { applyCodemods } from './transformer/codemodEngine.js';
 import { simpleGit } from 'simple-git';
+import { saveVerificationStatus, runDeploy } from './deploy/guide.js';
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
@@ -393,6 +394,7 @@ async function verify(targetPath: string, options: {
     console.log(chalk.dim('─'.repeat(60)));
     if (diff.pass) {
       console.log(chalk.green('✅ VERIFY PASS: No regressions detected!'));
+      await saveVerificationStatus(projectRoot);
     } else {
       console.log(chalk.red('❌ VERIFY FAIL: Regressions detected!'));
       console.log('\nDetails of regressions:');
@@ -641,6 +643,7 @@ async function transform(targetPath: string, options: {
   console.log(`  • ${chalk.bold('.env.example')} (placeholder template)`);
   console.log(chalk.dim('─'.repeat(60)));
   console.log(chalk.cyan(`\nOriginal code is saved on backup branch: ${backupBranch}\n`));
+  await saveVerificationStatus(projectRoot);
 }
 
 // ─── CLI Setup ──────────────────────────────────────────────────────────────
@@ -735,6 +738,29 @@ program
       const message = error instanceof Error ? error.message : String(error);
       console.error(
         chalk.red(`\n✖ Unexpected error during transformation: ${message}\n`)
+      );
+      process.exit(1);
+    }
+  });
+
+program
+  .command('deploy')
+  .description('Walk through the production deployment process for the verified application')
+  .argument('[path]', 'Path to the project directory', '.')
+  .option('--platform <name>', 'Pre-select target hosting platform (vercel, railway, netlify, manual)')
+  .option('--non-interactive', 'Run without terminal prompts (for scripting/CI)')
+  .option('--confirm-data-export', 'Implicitly confirm database data is exported (only in non-interactive mode)')
+  .action(async (targetPath: string, opts: Record<string, unknown>) => {
+    try {
+      await runDeploy(targetPath || '.', {
+        interactive: opts.nonInteractive ? false : true,
+        targetPlatform: opts.platform as string | undefined,
+        confirmDataExport: opts.confirmDataExport as boolean | undefined,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        chalk.red(`\n✖ Deployment failed: ${message}\n`)
       );
       process.exit(1);
     }

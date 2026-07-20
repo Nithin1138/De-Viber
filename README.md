@@ -50,6 +50,17 @@ node dist/index.js analyse ./path-to-your-project
 
 ---
 
+## 🚀 The 4-Stage Pipeline
+
+De-Viber structure is organized around a complete four-stage audit and migration pipeline:
+
+1. **`analyse`**: Scans your exported codebase locally to identify portability blocks (lock-in dependencies, platform config directories) and production-readiness security issues (hardcoded keys, missing RLS, IDOR checks).
+2. **`transform`**: Automatically migrates identified findings (e.g. refactoring committed keys and Supabase connection strings into environment variables). Backs up the original code to a git branch.
+3. **`verify`**: Spins up an isolated Docker verification container to compile the project, run tests, and ping routes, comparing results against a baseline to guarantee no regressions were introduced.
+4. **`deploy`**: Guides you through deploying the verified application to independent hosts (Vercel, Railway, Netlify). Enforces that a successful `verify` has run previously, prompts for required environment variables, and executes a final live URL smoke check.
+
+---
+
 ## CLI Commands & Options
 
 ```bash
@@ -69,6 +80,10 @@ deviber verify <path> --cleanup           # Clean up leftover test containers
 # Automatically refactor auto-fixable findings and verify safety
 deviber transform <path>
 deviber transform <path> --timeout 120    # Custom verification timeout in seconds
+
+# Guided walkthrough to deploy the verified project independently
+deviber deploy <path>
+deviber deploy <path> --platform vercel   # Pre-select target hosting platform
 ```
 
 ---
