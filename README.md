@@ -1,6 +1,6 @@
 # deviber-cli
 
-A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Replit planned) for **vendor lock-in** and **security issues**.
+A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Replit planned) for **vendor lock-in** and **security issues** — then automatically fixes them and deploys to a real host.
 
 > [!WARNING]
 > **Disclaimer & Important Notice**
@@ -10,41 +10,31 @@ A local-first CLI that scans AI-app-builder exports (Lovable and Bolt today, Rep
 
 ## 🔒 Trust & Safety: What This Tool Does NOT Do
 
-* **NO Remote API Calls**: This tool operates *exclusively* offline on code you have already exported. It **never** contacts Lovable, Bolt, Replit, or any AI platform's servers.
-* **NO Automated Data Migration**: We scan and refactor code, not databases. Moving away from Lovable Cloud or managed environments will delete your live records—you must export your tables, storage, and user auth accounts separately.
+* **NO Remote API Calls**: Operates *exclusively* offline on code you have already exported. It **never** contacts Lovable, Bolt, Replit, or any AI platform's servers.
+* **NO Automated Data Migration**: We scan and refactor code, not databases. Moving away from managed environments will delete your live records — export your tables, storage, and auth accounts separately.
 * **NO Guarantees**: Detections are based on patterns and heuristics. They help pinpoint portability hurdles and security gaps but cannot prove a codebase is 100% bug-free.
 
 ---
 
 ## Quick Start & Installation
 
-You can run `deviber-cli` directly via `npx` or install it globally:
-
 ```bash
 # Run a scan directly without installing
 npx deviber-cli analyse ./path-to-your-project
 
-# Install globally on your system
+# Install globally
 npm install -g deviber-cli
 
-# Run scans anywhere
+# Run anywhere
 deviber analyse ./path-to-your-project
 ```
 
-### Run/Build locally from Source
-
-To run the CLI from source:
+### Build from Source
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/Nithin1138/De-Viber.git
 cd De-Viber
-
-# 2. Install dependencies & build
-npm install
-npm run build
-
-# 3. Scan your project folder using the local build
+npm install && npm run build
 node dist/index.js analyse ./path-to-your-project
 ```
 
@@ -52,38 +42,47 @@ node dist/index.js analyse ./path-to-your-project
 
 ## 🚀 The 4-Stage Pipeline
 
-De-Viber structure is organized around a complete four-stage audit and migration pipeline:
+```
+analyse → transform → verify → deploy
+```
 
-1. **`analyse`**: Scans your exported codebase locally to identify portability blocks (lock-in dependencies, platform config directories) and production-readiness security issues (hardcoded keys, missing RLS, IDOR checks).
-2. **`transform`**: Automatically migrates identified findings (e.g. refactoring committed keys and Supabase connection strings into environment variables). Backs up the original code to a git branch.
-3. **`verify`**: Spins up an isolated Docker verification container to compile the project, run tests, and ping routes, comparing results against a baseline to guarantee no regressions were introduced.
-4. **`deploy`**: Guides you through deploying the verified application to independent hosts (Vercel, Railway, Netlify). Enforces that a successful `verify` has run previously, prompts for required environment variables, and executes a final live URL smoke check.
+| Stage | What it does |
+|---|---|
+| **`analyse`** | Scans for portability blocks (lock-in deps, platform config dirs) and security issues (hardcoded keys, missing RLS, IDOR). Saves a snapshot for diff tracking. |
+| **`transform`** | Auto-fixes findings: extracts secrets to `.env.local`, deletes platform-specific config dirs, configures `.npmrc` for cloud builds. Creates a git backup branch and **auto-commits** the cleaned code. |
+| **`verify`** | Spins up an isolated Docker container to compile, run tests, and ping routes — ensuring no regressions were introduced by transform. |
+| **`deploy`** | Guided walkthrough to Vercel, Railway, or Netlify. Gates on prior verification, invokes the platform CLI, and runs a live smoke check on the deployed URL. |
 
 ---
 
-## CLI Commands & Options
+## CLI Commands
 
 ```bash
-# Scan a project for vendor lock-in and security issues
+# ── Analyse ──────────────────────────────────────────────
+# Scan for vendor lock-in and security issues.
+# Automatically shows a diff vs your previous scan.
 deviber analyse <path>
-deviber analyse <path> --offline         # Skip npm registry checks
+deviber analyse <path> --offline          # Skip npm registry checks
 deviber analyse <path> --platform lovable # Force platform ruleset
 deviber analyse <path> --format json      # Output as structured JSON
 deviber analyse <path> --output report.md # Save results to a file
 
-# Verify a project builds, runs tests, or pings routes in Docker
-deviber verify <path>
-deviber verify <path> --baseline <ref>    # Compare against a baseline Git commit
-deviber verify <path> --timeout 120       # Custom verification timeout in seconds
-deviber verify <path> --cleanup           # Clean up leftover test containers
-
-# Automatically refactor auto-fixable findings and verify safety
+# ── Transform ────────────────────────────────────────────
+# Auto-fix findings, create git backup, auto-commit clean code.
 deviber transform <path>
-deviber transform <path> --timeout 120    # Custom verification timeout in seconds
+deviber transform <path> --timeout 120   # Custom Docker timeout (seconds)
 
-# Guided walkthrough to deploy the verified project independently
+# ── Verify ───────────────────────────────────────────────
+# Docker-based build + route check. Required before deploy.
+deviber verify <path>
+deviber verify <path> --baseline <ref>   # Compare against a baseline Git ref
+deviber verify <path> --timeout 120      # Custom timeout in seconds
+deviber verify <path> --cleanup          # Remove leftover test containers
+
+# ── Deploy ───────────────────────────────────────────────
+# Guided deployment to Vercel, Railway, or Netlify.
 deviber deploy <path>
-deviber deploy <path> --platform vercel   # Pre-select target hosting platform
+deviber deploy <path> --platform vercel  # Pre-select target platform
 ```
 
 ---
@@ -91,138 +90,96 @@ deviber deploy <path> --platform vercel   # Pre-select target hosting platform
 ## What It Checks
 
 ### Portability (Lock-In Risk)
-* **Platform-Scoped Dependencies**: Scans for packages like `@lovable.dev/*` which only resolve inside the builder's hosting layer.
-* **Platform-Specific Configurations**: Checks for config files (e.g. `.lovable/` folder configuration) that standard hosts (Vercel, Railway) do not understand.
-* **AI Generator Comment Markers**: Finds comments left by AI generators that indicate where custom manual overrides might be needed.
-* **Lovable Cloud Data Risk**: Flags connection URLs pointing to managed Lovable database endpoints (`supabase.lovable.app`) to warn about data records loss on platform deletion.
+* **Platform-Scoped Dependencies** — packages like `@lovable.dev/*` that won't resolve outside the builder's hosting layer
+* **Platform-Specific Config Dirs** — `.lovable/`, `.bolt/` directories that standard hosts ignore; automatically deleted by `transform`
+* **AI Generator Comment Markers** — comments left by AI generators that indicate auto-generated code needing human review
+* **Lovable Cloud Data Risk** — flags Supabase URLs pointing to managed Lovable endpoints, warning about data loss on platform deletion
 
 ### Security (Production Readiness)
-* **Hardcoded Secrets**: AWS access keys, Stripe secret/publishable keys, and Supabase service-role keys committed in source.
-* **Missing Row Level Security (RLS)**: Scans migration scripts for tables missing RLS enforcements.
-* **Client-Side Admin Bypass**: Flags admin checks implemented solely in frontend components without server-side validation.
-* **Hallucinated Dependencies**: Compares package list against the public npm registry to detect packages generated by AI hallucinations.
-* **Ownership-Blind Queries**: Highlights queries fetching or updating records without verifying requesting user ownership.
+* **Hardcoded Secrets** — AWS keys, Stripe keys, Supabase service-role keys committed in source; auto-extracted to `.env.local` by `transform`
+* **Missing Row Level Security (RLS)** — migration scripts with tables that have no RLS policy
+* **Client-Side Admin Bypass** — admin checks implemented only in frontend components without server-side validation
+* **Hallucinated Dependencies** — packages generated by AI that don't exist on the npm registry
+* **Ownership-Blind Queries (IDOR)** — queries fetching or mutating records without verifying user ownership
 
 ---
 
-## Example Report Output
+## 📈 Scan Diff — Automatic Progress Tracking
 
-Here is a redacted example of what a printed Markdown report looks like:
+Every `analyse` run saves a lightweight snapshot to `.deviber/last-report.json`. On the next run, a **"Changes since last scan"** section is automatically appended:
 
-```markdown
-# 📋 Portability & Security Report
+```
+────────────────────────────────────────────────────────────
+📈 Changes since last scan (7/20/2026, 3:49 PM)
+────────────────────────────────────────────────────────────
+  Portability: 76 → 84 (+8 pts)  Security: 92 → 92 (+0 pts)  Findings: 4 → 3 (-1)
 
-**Project:** simple-app
-**Files Scanned:** 12
-**Detected Platform:** lovable (high confidence)
+✅ Fixed (1):
+  🟡 Lovable-Specific Configuration Files — .lovable
 
-## Summary
-| Metric | Value |
-|---|---|
-| Portability Score | 85/100 (B) |
-| Security Score | 21/100 (F) |
-| Total Findings | 4 |
-
-## Portability Findings
-* **Lovable-Scoped Package Dependencies** (Severity: High)
-  * File: `package.json`
-  * Action: Replace `@lovable.dev/ui` with open-source equivalent.
-
-## Security Findings
-* **Hardcoded API Keys and Secrets** (Severity: Critical)
-  * File: `src/lib/supabaseClient.ts:7`
-  * Action: Move the Stripe API Key to an environment variable.
+⚠️  Still open (3):
+  🟠 Lovable-Scoped/Specific Package Dependencies — package.json
+  ℹ️  Lovable/GPT-Pilot Code Markers — vite.config.ts
+  🟡 Possible Insecure Direct Object Reference — src/routes/library.tsx
+────────────────────────────────────────────────────────────
 ```
 
-## Example Walkthrough: End-to-End Audit & Migration
+No extra flags needed. Run `analyse` before and after `transform` to see exactly what changed.
 
-Here is a worked example of running the entire pipeline against a real exported project:
+---
 
-### 1. Analyse
-Scan your exported project folder to find portability blocks and security issues:
+## Example: Full End-to-End Walkthrough
+
 ```bash
+# 1. Analyse — find what needs fixing
 deviber analyse ./my-app
-```
-*Output:*
-```
-# 📋 Portability & Security Report
-Project: my-app
-Detected Platform: lovable (high confidence)
+# → Portability: 76/100 | Security: 92/100 | Findings: 4
 
-Summary:
-- Portability Score: 92/100
-- Security Score: 78/100
-- Total Findings: 2
-
-Portability Findings:
-- LOVABLE_CLOUD_DATA_RISK_001: Supabase database URL points to a Lovable-managed cloud endpoint.
-
-Security Findings:
-- SEC_HARDCODED_SECRET_001: Found hardcoded Supabase service_role key in `src/lib/supabase.ts:5`.
-```
-
-### 2. Transform
-Automatically extract the hardcoded Supabase key into `.env.local` and substitute a reference in the source code:
-```bash
+# 2. Transform — auto-fix everything possible
 deviber transform ./my-app
-```
-*Output:*
-```
-✨ TRANSFORM SUCCESS: All changes successfully verified!
-- Extracted hardcoded secret variable "SUPABASE_SERVICE_ROLE_KEY" into env variable "VITE_SUPABASE_SERVICE_ROLE_KEY"
-- Created backup branch: deviber-backup-1784537399215
-```
+# → Extracts secrets to .env.local
+# → Deletes .lovable/ platform config dir
+# → Configures .npmrc for cloud builds (legacy-peer-deps)
+# → Commits all changes: "chore(deviber): apply transform"
 
-### 3. Verify
-Spin up a local Docker container to compile, run tests, and check active server routes to ensure the transform didn't introduce regressions:
-```bash
+# 3. Analyse again — see what changed
+deviber analyse ./my-app
+# → Portability: 84/100 (+8) | Findings: 3 (-1)
+# → ✅ Fixed: .lovable/ directory
+# → ⚠️  Still open: @lovable.dev/vite-tanstack-config (manual action needed)
+
+# 4. Verify — confirm nothing broke
 deviber verify ./my-app
-```
-*Output:*
-```
-🐳 Initializing Docker Verifier...
-🐳 Verifying current version...
-Successfully built Docker image
-🌐 Booting application container...
-  URL http://127.0.0.1:3000/ responded with 200
-✅ VERIFY PASS: No regressions detected!
+# → Docker build ✅ | Routes ping ✅ | No regressions
+
+# 5. Deploy — push to Vercel/Railway
+deviber deploy ./my-app
+# → Invokes vercel CLI, runs live smoke check ✅
 ```
 
-### 4. Deploy
-Migrate to Vercel/Railway. The deploy walkthrough will gate on prior verification and Supabase data exports, prompt for env variables, and verify with a final live smoke test:
-```bash
-deviber deploy ./my-app
-```
-*Output:*
-```
-🔍 Scanning project for data export requirements...
-⚠️  DATA EXPORT REQUIREMENT DETECTED
-Have you successfully exported and backed up your database data? (y/N): y
-📦 Project Shape Detected: Frontend + Supabase Backend
-🚀 Preparing VERCEL Deployment...
-Would you like to invoke "vercel deploy" now? (y/N): y
-Pinging https://my-app.vercel.app...
-✅ SMOKE CHECK PASS: URL is active (HTTP 200)
-```
+### What `transform` does automatically
+
+| Action | What it fixes |
+|---|---|
+| Secrets → `.env.local` | Hardcoded AWS, Stripe, Supabase keys moved to env vars |
+| Delete `.lovable/` / `.bolt/` | Platform config dirs removed so any host can build |
+| Create `.npmrc` | `legacy-peer-deps=true` so Vercel/Railway `npm install` works |
+| Git backup branch | Original code preserved at `deviber-backup-<timestamp>` |
+| Auto-commit | All changes committed so `git diff` is immediately visible |
 
 ---
 
 ## Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/deviber-cli.git
-cd deviber-cli
+git clone https://github.com/Nithin1138/De-Viber.git
+cd De-Viber
 npm install
 
-# Compile TypeScript
-npm run build
-
-# Run fast unit test suite
-npm test
-
-# Run Docker-based integration tests
-npm run test:integration
+npm run build          # Compile TypeScript
+npm test               # Fast unit test suite (62 tests)
+npm run test:integration  # Docker-based integration tests
+npm run lint           # Type-check without emitting
 ```
 
 ---
@@ -235,5 +192,4 @@ MIT — see [LICENSE](./LICENSE)
 
 ## 🐞 Support & Feedback
 
-Found a bug or a false positive? Open an issue on our [GitHub Issue Tracker](https://github.com/Nithin1138/De-Viber/issues). We welcome community feedback to help improve the heuristic rules!
-
+Found a bug or a false positive? Open an issue on the [GitHub Issue Tracker](https://github.com/Nithin1138/De-Viber/issues). Community feedback helps improve the heuristic rules.
