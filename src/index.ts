@@ -638,6 +638,8 @@ async function transform(targetPath: string, options: {
         );
       } else if (item.action === 'deleted') {
         console.log(`  • Safely removed platform-specific configuration directory/file.`);
+      } else if (item.action === 'created') {
+        console.log(`  • Created/configured helper file (e.g., .npmrc to bypass peer dependency build errors).`);
       }
     }
   }

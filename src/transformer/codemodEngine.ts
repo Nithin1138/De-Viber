@@ -7,7 +7,7 @@ export interface CodemodSummary {
   file: string;
   variableName: string;
   envVarName: string;
-  action: 'extracted' | 'deleted';
+  action: 'extracted' | 'deleted' | 'created';
 }
 
 function appendToEnvFile(filePath: string, varName: string, value: string): void {
@@ -42,6 +42,26 @@ export async function applyCodemods(
 ): Promise<CodemodSummary[]> {
   const summaries: CodemodSummary[] = [];
 
+  // Ensure .npmrc exists and has legacy-peer-deps=true to avoid remote registry build failures
+  const npmrcPath = join(projectRoot, '.npmrc');
+  let npmrcContent = '';
+  if (existsSync(npmrcPath)) {
+    npmrcContent = readFileSync(npmrcPath, 'utf-8');
+  }
+  if (!npmrcContent.includes('legacy-peer-deps')) {
+    if (npmrcContent && !npmrcContent.endsWith('\n')) {
+      npmrcContent += '\n';
+    }
+    npmrcContent += 'legacy-peer-deps=true\n';
+    writeFileSync(npmrcPath, npmrcContent, 'utf-8');
+    summaries.push({
+      file: npmrcPath,
+      variableName: '',
+      envVarName: '',
+      action: 'created',
+    });
+  }
+
   // Filter for platform config deletion
   const configFindings = findings.filter(
     (f) => (f.ruleId === 'LOVABLE_CONFIG_001' || f.ruleId === 'BOLT_CONFIG_001') && f.file
@@ -65,7 +85,7 @@ export async function applyCodemods(
     (f) => f.ruleId === 'SEC_HARDCODED_SECRET_001' && f.file
   );
 
-  if (secretFindings.length === 0 && configFindings.length === 0) {
+  if (secretFindings.length === 0 && configFindings.length === 0 && summaries.length === 0) {
     return [];
   }
 
