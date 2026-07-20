@@ -39,7 +39,7 @@ import {
   renderMarkdown,
   renderJson,
 } from './report/generate.js';
-import { applyCodemods, ensureNpmrc } from './transformer/codemodEngine.js';
+import { applyCodemods } from './transformer/codemodEngine.js';
 import { saveSnapshot, loadSnapshot, printDiff } from './report/snapshot.js';
 import { simpleGit } from 'simple-git';
 import { saveVerificationStatus, runDeploy } from './deploy/guide.js';
@@ -565,15 +565,8 @@ async function transform(targetPath: string, options: {
   console.log(chalk.cyan('🔍 Scanning for auto-fixable findings...'));
   const { findings } = await runRules(allRules, context);
 
-  // Always ensure .npmrc has legacy-peer-deps=true — prevents cloud build failures
-  // on Vercel, Railway, etc. regardless of whether there are other findings to fix.
-  const npmrcCreated = ensureNpmrc(projectRoot);
-  if (npmrcCreated) {
-    console.log(chalk.dim(`  ✔ .npmrc configured with legacy-peer-deps=true`));
-  }
-
   const fixableFindings = findings.filter(f => f.autoFixable);
-  if (fixableFindings.length === 0 && !npmrcCreated) {
+  if (fixableFindings.length === 0) {
     console.log(chalk.green('\n✅ No auto-fixable findings found. Nothing to transform!'));
     return;
   }
@@ -592,10 +585,7 @@ async function transform(targetPath: string, options: {
     }
   }
 
-  // Include .npmrc creation in summaries so it appears in the final report
-  if (npmrcCreated) {
-    summaries.push({ file: npmrcCreated, variableName: '', envVarName: '', action: 'created' });
-  }
+
 
   if (summaries.length === 0) {
     console.log(chalk.green('\n✅ No changes were made.'));
@@ -693,19 +683,20 @@ async function transform(targetPath: string, options: {
   // 6. Commit the transformed changes so the diff is visible and remote
   //    deployment platforms (Vercel, Railway) pick up the clean code.
   try {
-    const diffStat = await git.diffSummary();
+    await git.add('.');
+    const diffStat = await git.diffSummary(['--cached']);
     if (diffStat.files.length > 0) {
       console.log(chalk.yellow(`\n⚠️  Review Changes Before Committing`));
       
-      const statOutput = await git.diff(['--stat']);
+      const statOutput = await git.diff(['--cached', '--stat']);
       console.log(statOutput);
       
       const confirmCommit = await askQuestion('Commit these changes now? (y/N): ');
       if (confirmCommit.toLowerCase() === 'y') {
-        await git.add('.');
         await git.commit('chore(deviber): apply transform — remove platform lock-in, configure deployment');
         console.log(chalk.green(`\n✅ Changes committed to git on branch: ${currentBranch}`));
       } else {
+        await git.reset();
         console.log(chalk.yellow('\nSkipping auto-commit.'));
         console.log(chalk.yellow(`Changes remain in your working directory on branch: ${currentBranch}`));
         console.log(chalk.yellow('Run "git add . && git commit" manually to save them when ready.'));

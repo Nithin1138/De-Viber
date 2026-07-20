@@ -223,10 +223,8 @@ const peerDependencyConflict: Rule = {
   autoFixable: true,
   requiresNetwork: false, // We check locally if possible, though npm install might reach out
   detect: async function (context: RuleContext): Promise<Finding[]> {
-    if (context.offline) return [];
-
     try {
-      await execAsync('npm install --dry-run --no-fund --no-audit', {
+      await execAsync('npm install --dry-run --no-fund --no-audit --prefer-offline --no-legacy-peer-deps', {
         cwd: context.projectRoot,
         timeout: 10000,
       });

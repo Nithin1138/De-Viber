@@ -207,4 +207,23 @@ describe('Dependency Checker', () => {
     const { findings } = await runRules(dependencyRules, context);
     expect(findings).toHaveLength(0);
   });
+
+  it('does NOT flag peer conflict for empty-deps fixture (true negative)', async () => {
+    const context = await buildContext('empty-deps', {
+      offline: true,
+    });
+    const { findings } = await runRules(dependencyRules, context);
+    const peerFindings = findings.filter(f => f.ruleId === 'DEP_PEER_CONFLICT_001');
+    expect(peerFindings).toHaveLength(0);
+  });
+
+  it('flags peer conflict for peer-conflict fixture (true positive)', async () => {
+    const context = await buildContext('peer-conflict', {
+      offline: true,
+    });
+    const { findings } = await runRules(dependencyRules, context);
+    const peerFindings = findings.filter(f => f.ruleId === 'DEP_PEER_CONFLICT_001');
+    expect(peerFindings).toHaveLength(1);
+    expect(peerFindings[0].message).toContain('peer dependency conflicts');
+  });
 });

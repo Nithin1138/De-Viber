@@ -38,7 +38,7 @@ function appendToEnvFile(filePath: string, varName: string, value: string): void
  * Apply ts-morph codemods for auto-fixable findings.
  */
 /**
- * Always-run step: ensure .npmrc has legacy-peer-deps=true so that cloud
+ * Ensure .npmrc has legacy-peer-deps=true so that cloud
  * deployment platforms (Vercel, Railway, etc.) can install dependencies
  * without peer-dependency resolution failures.
  *
@@ -116,8 +116,8 @@ export async function applyCodemods(
     (f) => f.ruleId === 'SEC_HARDCODED_SECRET_001' && f.file
   );
 
-  if (secretFindings.length === 0 && configFindings.length === 0) {
-    return [];
+  if (secretFindings.length === 0) {
+    return summaries;
   }
 
   // Detect Vite project
